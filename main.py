@@ -115,8 +115,23 @@ async def handle_text(message: Message):
     report = await loop.run_in_executor(None, analyze_chesscom, username)
     await message.answer(report)
 
+from aiohttp import web
+
+# Фейковый веб-сервер для обмана Render
+async def handle_ping(request):
+    return web.Response(text="Bot is alive!")
+
 async def main():
-    print("🚀 БОТ ЗАПУЩЕН НА СЕРВЕРЕ!")
+    # Запускаем фоновый веб-сервер на порту, который требует Render
+    app = web.Application()
+    app.router.add_get('/', handle_ping)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    
+    print("🚀 БОТ И ВЕБ-СЕРВЕР УСПЕШНО ЗАПУЩЕНЫ!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
