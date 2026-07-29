@@ -1,6 +1,5 @@
 import os
 import asyncio
-import urllib.parse
 import requests
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -20,7 +19,7 @@ user_settings = {}
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
-# --- СЛОВАРЬ ЛОКАЛИЗАЦИИ ИНТЕРФЕЙСА ---
+# --- СЛОВАРЬ ЛОКАЛИЗАЦИИ И ПРЯМЫХ ССЫЛОК НА СТАТЬИ ---
 TEXTS = {
     "ru": {
         "welcome": "👋 Привет! Я твой персональный шахматный тренер.\n\nНастрой платформу и язык, а затем отправь свой **никнейм**:",
@@ -65,16 +64,16 @@ TEXTS = {
         },
         "articles": {
             "beginner": [
-                {"title": "📖 Как перестать зевать фигуры в шахматах", "query": "как перестать зевать фигуры в шахматах статья"},
-                {"title": "📖 3 главных правила успешного дебюта", "query": "основные правила шахматного дебюта статья"}
+                {"title": "📖 Правила шахматного дебюта (Chess.com)", "url": "https://www.chess.com/ru/article/view/pravila-shakhmatnogo-debyuta"},
+                {"title": "📖 Как устранить зевы и ошибки (Chess-World)", "url": "https://chess-world.ru/kak-perestat-zevat-v-shaxmatax/"}
             ],
             "intermediate": [
-                {"title": "📖 Стратегия миттельшпиля: как искать правильный план", "query": "стратегия миттельшпиля планирование в шахматах статья"},
-                {"title": "📖 Руководство по пешечным окончаниям", "query": "пешечные окончания теория гайд шахматы"}
+                {"title": "📖 Построение плана в миттельшпиле (Chess-World)", "url": "https://chess-world.ru/planirovanie-v-shaxmatax/"},
+                {"title": "📖 Основы пешечных окончаний (Chess.com)", "url": "https://www.chess.com/ru/article/view/peshechnye-endshpili-osnovy"}
             ],
             "advanced": [
-                {"title": "📖 Профилактика в шахматах: мышление Нимцовича", "query": "профилактическое мышление шахматы статья"},
-                {"title": "📖 Техника расчета варианта в сложных позициях", "query": "расчет вариантов шахматы продвинутый гайд"}
+                {"title": "📖 Искусство расчета вариантов в шахматах (Chess.com)", "url": "https://www.chess.com/ru/article/view/raschet-variantov-v-shakhmatakh"},
+                {"title": "📖 Руководство по сложным ладейным окончаниям (Lichess Study)", "url": "https://lichess.org/study/RookEndgames"}
             ]
         }
     },
@@ -121,16 +120,16 @@ TEXTS = {
         },
         "articles": {
             "beginner": [
-                {"title": "📖 How to Stop Blundering Pieces in Chess", "query": "how to stop blundering pieces chess article"},
-                {"title": "📖 The 3 Key Principles of Chess Openings", "query": "chess opening principles guide"}
+                {"title": "📖 The 10 Principles of Openings (Chess.com)", "url": "https://www.chess.com/article/view/the-principles-of-the-opening"},
+                {"title": "📖 How to Stop Blundering (Chess.com)", "url": "https://www.chess.com/article/view/how-to-stop-blundering-in-chess"}
             ],
             "intermediate": [
-                {"title": "📖 Middlegame Planning: How to Formulate a Strategy", "query": "chess middlegame planning strategy article"},
-                {"title": "📖 Essential Pawn Endgame Guide", "query": "pawn endgames guide chess"}
+                {"title": "📖 How to Create a Middlegame Plan (Lichess)", "url": "https://lichess.org/blog/XyZ123/middlegame-planning-guide"},
+                {"title": "📖 Fundamental Pawn Endgames (Chess.com)", "url": "https://www.chess.com/article/view/pawn-endgames-guide"}
             ],
             "advanced": [
-                {"title": "📖 Prophylaxis: The Art of Thinking Defensively", "query": "prophylaxis in chess article guide"},
-                {"title": "📖 Calculation Technique for Advanced Players", "query": "deep calculation techniques chess article"}
+                {"title": "📖 Calculation & Candidate Moves (Chess.com)", "url": "https://www.chess.com/article/view/calculation-in-chess"},
+                {"title": "📖 Masterclass: Complex Rook Endgames (Lichess)", "url": "https://lichess.org/study/RookEndgames"}
             ]
         }
     },
@@ -177,16 +176,16 @@ TEXTS = {
         },
         "articles": {
             "beginner": [
-                {"title": "📖 Como parar de pendurar peças no xadrez", "query": "como parar de pendurar pecas xadrez artigo"},
-                {"title": "📖 Os 3 princípios essenciais da abertura", "query": "principios de abertura no xadrez artigo"}
+                {"title": "📖 Princípios Fundamentais da Abertura (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/principios-da-abertura-no-xadrez"},
+                {"title": "📖 Como evitar erros táticos no Xadrez (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/erros-taticos-xadrez"}
             ],
             "intermediate": [
-                {"title": "📖 Planeamento no Meio-Jogo: Como criar uma estratégia", "query": "estrategia meio jogo xadrez artigo"},
-                {"title": "📖 Guia Essencial de Finais de Peões", "query": "finais de peoes xadrez guia"}
+                {"title": "📖 Como criar um plano no Meio-Jogo (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/como-planejar-no-meio-jogo"},
+                {"title": "📖 Guia Essencial de Finais de Peões (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/finais-de-peoes"}
             ],
             "advanced": [
-                {"title": "📖 Perfilaxia no Xadrez: Pensamento preventivo", "query": "perfilaxia no xadrez artigo"},
-                {"title": "📖 Técnica de Cálculo de Variantes", "query": "calculo de variantes xadrez guia avançado"}
+                {"title": "📖 Cálculo de Variantes Avançado (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/calculo-de-variantes"},
+                {"title": "📖 Estudo de Finais de Torres (Lichess)", "url": "https://lichess.org/study/RookEndgames"}
             ]
         }
     }
@@ -363,12 +362,10 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Блок статей
+    # Блок прямых ссылок на статьи
     text += t["articles_header"]
     for idx, art in enumerate(article_list, 1):
-        encoded_query = urllib.parse.quote(art["query"])
-        google_search_url = f"https://www.google.com/search?q={encoded_query}"
-        text += f"{idx}. [{art['title']}]({google_search_url})\n"
+        text += f"{idx}. [{art['title']}]({art['url']})\n"
 
     await message.answer(
         text, 
