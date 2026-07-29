@@ -1,128 +1,142 @@
 import os
 import asyncio
-import logging
 import requests
-from datetime import datetime
-from collections import Counter
+from aiogram import Bot, Dispatcher, types
+from aiogram.filters import Command
+from aiohttp import web
+from googleapiclient.discovery import build
 
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
-from aiogram.types import Message
-
-# Берём токен из настроек сервера Render
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 
-logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-VIDEO_DATABASE = [
-    {
-        "min_elo": 0, "max_elo": 1200, "category": "checkmated",
-        "title": "Как перестать зевать маты в 1-2 хода",
-        "channel": "Шахматы для всех", "url": "https://youtu.be/dummy1"
-    },
-    {
-        "min_elo": 0, "max_elo": 1500, "category": "black_losses",
-        "title": "Базовый солидный репертуар за черных",
-        "channel": "Levitov Chess", "url": "https://youtu.be/dummy2"
-    },
-    {
-        "min_elo": 1000, "max_elo": 1800, "category": "timeout",
-        "title": "Как играть в цейтноте и не терять время",
-        "channel": "Crestbook", "url": "https://youtu.be/dummy3"
-    }
-]
+# Привязываем категории проблем и уровень ELO к проверенным шахматным каналам
+RECOMMENDED_CHANNELS = {
+    "blunders": ["Levitov Chess", "Crestbook Шахматы", "Шахматы для всех"],
+    "time": ["Шахматы с Сергеем Шиповым", "Levitov Chess"],
+    "endgame": ["Шахматы для всех", "Crestbook Шахматы"],
+    "general": ["Levitov Chess", "Шахматы с Сергеем Шиповым"]
+}
 
-def analyze_chesscom(username):
-    headers = {'User-Agent': 'ChessSkillBoosterBot/1.0'}
-    
-    stats_url = f"https://api.chess.com/pub/player/{username}/stats"
-    stats_res = requests.get(stats_url, headers=headers)
-    
-    if stats_res.status_code != 200:
-        return f"❌ Игрок с ником '{username}' не найден на Chess.com!"
+def search_youtube_video(query_topic: str, channel_name: str) -> dict:
+    """Ищет релевантное видео на конкретном YouTube-канале через API"""
+    if not YOUTUBE_API_KEY:
+        return None
+    try:
+        youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        search_query = f"{channel_name} {query_topic}"
+        request = youtube.search().list(
+            q=search_query,
+            part="snippet",
+            maxResults=1,
+            type="video",
+            relevanceLanguage="ru"
+        )
+        response = request.execute()
         
-    stats_data = stats_res.json()
-    rapid_elo = stats_data.get('chess_rapid', {}).get('last', {}).get('rating', 1200)
-    blitz_elo = stats_data.get('chess_blitz', {}).get('last', {}).get('rating', 1200)
-    user_elo = max(rapid_elo, blitz_elo)
-    
-    now = datetime.now()
-    games_url = f"https://api.chess.com/pub/player/{username}/games/{now.strftime('%Y')}/{now.strftime('%m')}"
-    games_res = requests.get(games_url, headers=headers)
-    games = games_res.json().get('games', []) if games_res.status_code == 200 else []
-    
-    if not games:
-        return f"📊 Рейтинг: {user_elo} ELO\n\n⚠️ Не найдено сыгранных партий за этот месяц."
+        items = response.get("items", [])
+        if items:
+            video = items[0]
+            video_id = video["id"]["videoId"]
+            title = video["snippet"]["title"]
+            return {
+                "title": title,
+                "url": f"https://www.youtube.com/watch?v={video_id}"
+            }
+    except Exception as e:
+        print(f"Ошибка поиска YouTube API: {e}")
+    return None
 
-    losses = []
-    white_losses, black_losses = 0, 0
+def get_chess_stats(username: str):
+    """Запрашивает данные профиля с Chess.com API"""
+    headers = {'User-Agent': 'ChessCoachBot/1.0'}
+    url = f"https://api.chess.com/pub/player/{username}/stats"
+    response = requests.get(url, headers=headers)
     
-    for game in games:
-        white_player = game.get('white', {})
-        black_player = game.get('black', {})
-        is_white = white_player.get('username', '').lower() == username.lower()
-        user_data = white_player if is_white else black_player
+    if response.status_code != 200:
+        return None
         
-        user_result = user_data.get('result')
-        if user_result in ['resigned', 'checkmated', 'timeout']:
-            losses.append(user_result)
-            if is_white: white_losses += 1
-            else: black_losses += 1
-            
-    if not losses:
-        return f"📊 Рейтинг: {user_elo} ELO\n\n🎉 У вас отличная серия без поражений!"
-        
-    main_problem = Counter(losses).most_common(1)[0][0]
+    data = response.json()
+    stats = {}
     
-    problem_names = {
-        'checkmated': 'Мат / Потеря фигуры',
-        'timeout': 'Просрочка времени (цейтнот)',
-        'resigned': 'Сдача в тяжелой позиции'
-    }
-    
-    report = f"📊 Игрок: {username}\n"
-    report += f"⚡ Рабочий ELO: {user_elo}\n\n"
-    report += f"⚠️ Главная проблема: {problem_names.get(main_problem, main_problem)}\n\n"
-    report += "🎓 Персональный урок на эту неделю:\n"
-    
-    found = False
-    for item in VIDEO_DATABASE:
-        if item['min_elo'] <= user_elo <= item['max_elo']:
-            report += f"\n• {item['title']}\n  Канал: {item['channel']}\n  Ссылка: {item['url']}\n"
-            found = True
-            break
-            
-    if not found:
-        report += "\nПодходящих видео пока нет в базе."
-        
-    return report
+    for mode in ['chess_blitz', 'chess_rapid', 'chess_bullet']:
+        if mode in data and 'last' in data[mode]:
+            stats[mode] = {
+                'rating': data[mode]['last']['rating'],
+                'record': data[mode].get('record', {})
+            }
+    return stats
 
-@dp.message(CommandStart())
-async def cmd_start(message: Message):
+@dp.message(Command("start"))
+async def start_cmd(message: types.Message):
     await message.answer(
         "👋 Привет! Я твой персональный шахматный тренер.\n\n"
-        "Отправь мне свой никнейм на Chess.com, и я подберу для тебя полезные уроки!"
+        "Отправь мне свой **никнейм на Chess.com**, и я проанализирую твой профиль, "
+        "определю слабые места и подберу обучающие видео под твой уровень!"
     )
 
-@dp.message(F.text)
-async def handle_text(message: Message):
+@dp.message()
+async def analyze_player(message: types.Message):
     username = message.text.strip()
-    await message.answer(f"🔍 Анализирую партии для {username}...")
+    await message.answer(f"🔍 Анализирую профиль `{username}` на Chess.com...")
     
-    loop = asyncio.get_event_loop()
-    report = await loop.run_in_executor(None, analyze_chesscom, username)
-    await message.answer(report)
+    stats = get_chess_stats(username)
+    if not stats:
+        await message.answer("❌ Игрок не найден или у него нет сыгранных партий. Проверь никнейм!")
+        return
 
-from aiohttp import web
+    # Находим основной рейтинг (Rapid или Blitz)
+    rapid_rating = stats.get('chess_rapid', {}).get('rating', 0)
+    blitz_rating = stats.get('chess_blitz', {}).get('rating', 0)
+    current_rating = max(rapid_rating, blitz_rating)
 
-# Фейковый веб-сервер для обмана Render
+    if current_rating == 0:
+        await message.answer(f"📊 Игрок **{username}** найден, но нет сыгранных партий в Rapid/Blitz.")
+        return
+
+    # Подбираем тему и каналы на основе ELO
+    if current_rating < 1000:
+        topic = "как перестать зевать фигуры базовые ошибки"
+        category = "blunders"
+        level_text = "Начинающий уровень"
+    elif current_rating < 1500:
+        topic = "стратегия и тактика средний уровень"
+        category = "general"
+        level_text = "Любительский уровень"
+    else:
+        topic = "глубокий анализ партий эндшпиль"
+        category = "endgame"
+        level_text = "Продвинутый уровень"
+
+    # Ищем видео через YouTube API
+    channels = RECOMMENDED_CHANNELS.get(category, RECOMMENDED_CHANNELS["general"])
+    video_info = None
+    
+    for channel in channels:
+        video_info = search_youtube_video(topic, channel)
+        if video_info:
+            break
+
+    # Формируем ответ пользователю
+    text = f"📊 **Результаты анализа для {username}:**\n\n"
+    text += f"🏆 Максимальный рейтинг: **{current_rating} ELO** ({level_text})\n\n"
+    
+    if video_info:
+        text += f"🎯 **Рекомендованный урок:**\n"
+        text += f"🎬 [{video_info['title']}]({video_info['url']})\n\n"
+        text += "💡 Посмотри этот разбор, чтобы закрыть основные пробелы в игре!"
+    else:
+        text += "🎬 *Не удалось подгрузить видео из YouTube API, попробуй позже.*"
+
+    await message.answer(text, parse_mode="Markdown")
+
+# Фейковый веб-сервер для поддержания Render в активном состоянии
 async def handle_ping(request):
     return web.Response(text="Bot is alive!")
 
 async def main():
-    # Запускаем фоновый веб-сервер на порту, который требует Render
     app = web.Application()
     app.router.add_get('/', handle_ping)
     runner = web.AppRunner(app)
