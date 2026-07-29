@@ -1,5 +1,6 @@
 import os
 import asyncio
+import urllib.parse
 import requests
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
@@ -32,7 +33,8 @@ TEXTS = {
         "blitz": "• Блиц: **{rating} ELO**\n",
         "bullet": "• Пуля: **{rating} ELO**\n\n",
         "weak_header": "🔍 **Выявленные слабые места в игре:**\n",
-        "plan_header": "\n🎬 **Персональный учебный план:**\n",
+        "plan_header": "\n🎬 **Персональный учебный план (Видео):**\n",
+        "articles_header": "\n📚 **Рекомендованные статьи и гайды:**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
         "levels": {
             "beginner": "Начинающий уровень",
@@ -60,6 +62,20 @@ TEXTS = {
             "beginner": ["базовые зевы фигуры", "основы дебюта контроль центра", "как перестать спешить в шахматах"],
             "intermediate": ["типовые планы в миттельшпиле", "основы пешечных окончаний", "шахматная стратегия средний уровень"],
             "advanced": ["глубокий расчет вариантов", "ладейные окончания продвинутый", "профилактическое мышление в шахматах"]
+        },
+        "articles": {
+            "beginner": [
+                {"title": "📖 Как перестать зевать фигуры в шахматах", "query": "как перестать зевать фигуры в шахматах статья"},
+                {"title": "📖 3 главных правила успешного дебюта", "query": "основные правила шахматного дебюта статья"}
+            ],
+            "intermediate": [
+                {"title": "📖 Стратегия миттельшпиля: как искать правильный план", "query": "стратегия миттельшпиля планирование в шахматах статья"},
+                {"title": "📖 Руководство по пешечным окончаниям", "query": "пешечные окончания теория гайд шахматы"}
+            ],
+            "advanced": [
+                {"title": "📖 Профилактика в шахматах: мышление Нимцовича", "query": "профилактическое мышление шахматы статья"},
+                {"title": "📖 Техника расчета варианта в сложных позициях", "query": "расчет вариантов шахматы продвинутый гайд"}
+            ]
         }
     },
     "en": {
@@ -73,7 +89,8 @@ TEXTS = {
         "blitz": "• Blitz: **{rating} ELO**\n",
         "bullet": "• Bullet: **{rating} ELO**\n\n",
         "weak_header": "🔍 **Identified Weaknesses:**\n",
-        "plan_header": "\n🎬 **Personal Training Plan:**\n",
+        "plan_header": "\n🎬 **Personal Training Plan (Videos):**\n",
+        "articles_header": "\n📚 **Recommended Articles & Guides:**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
         "levels": {
             "beginner": "Beginner Level",
@@ -101,6 +118,20 @@ TEXTS = {
             "beginner": ["avoid blunders chess beginner", "opening principles center control", "chess time management"],
             "intermediate": ["middlegame plans chess", "pawn endgame basics", "chess strategy intermediate"],
             "advanced": ["deep calculation chess", "rook endgame masterclass", "prophylaxis in chess"]
+        },
+        "articles": {
+            "beginner": [
+                {"title": "📖 How to Stop Blundering Pieces in Chess", "query": "how to stop blundering pieces chess article"},
+                {"title": "📖 The 3 Key Principles of Chess Openings", "query": "chess opening principles guide"}
+            ],
+            "intermediate": [
+                {"title": "📖 Middlegame Planning: How to Formulate a Strategy", "query": "chess middlegame planning strategy article"},
+                {"title": "📖 Essential Pawn Endgame Guide", "query": "pawn endgames guide chess"}
+            ],
+            "advanced": [
+                {"title": "📖 Prophylaxis: The Art of Thinking Defensively", "query": "prophylaxis in chess article guide"},
+                {"title": "📖 Calculation Technique for Advanced Players", "query": "deep calculation techniques chess article"}
+            ]
         }
     },
     "pt": {
@@ -114,7 +145,8 @@ TEXTS = {
         "blitz": "• Blitz: **{rating} ELO**\n",
         "bullet": "• Bullet: **{rating} ELO**\n\n",
         "weak_header": "🔍 **Pontos Fracos Identificados:**\n",
-        "plan_header": "\n🎬 **Plano de Treino Personalizado:**\n",
+        "plan_header": "\n🎬 **Plano de Treino Personalizado (Vídeos):**\n",
+        "articles_header": "\n📚 **Artigos e Guias Recomendados:**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
         "levels": {
             "beginner": "Nível Iniciante",
@@ -123,7 +155,7 @@ TEXTS = {
         },
         "weak_points": {
             "beginner": [
-                "⚠️ **Tática e Erros Crias:** Perda frequente de peças desprotegidas e falta de visão de xeque-mate simples.",
+                "⚠️ **Tática e Erros Crassos:** Perda frequente de peças desprotegidas e falta de visão de xeque-mate simples.",
                 "⚠️ **Abertura:** Falta de controlo do centro e mover a mesma peça várias vezes no início.",
                 "⚠️ **Gestão de Tempo:** Pânico com pouco tempo e precipitação em posições simples."
             ],
@@ -142,6 +174,20 @@ TEXTS = {
             "beginner": ["armadilhas xadrez iniciante", "principios de abertura centro xadrez", "gestao de tempo xadrez"],
             "intermediate": ["planos meio jogo xadrez", "finais de peoes xadrez", "estrategia de xadrez"],
             "advanced": ["calculo profundo xadrez", "finais de torres xadrez", "perfilaxia no xadrez"]
+        },
+        "articles": {
+            "beginner": [
+                {"title": "📖 Como parar de pendurar peças no xadrez", "query": "como parar de pendurar pecas xadrez artigo"},
+                {"title": "📖 Os 3 princípios essenciais da abertura", "query": "principios de abertura no xadrez artigo"}
+            ],
+            "intermediate": [
+                {"title": "📖 Planeamento no Meio-Jogo: Como criar uma estratégia", "query": "estrategia meio jogo xadrez artigo"},
+                {"title": "📖 Guia Essencial de Finais de Peões", "query": "finais de peoes xadrez guia"}
+            ],
+            "advanced": [
+                {"title": "📖 Perfilaxia no Xadrez: Pensamento preventivo", "query": "perfilaxia no xadrez artigo"},
+                {"title": "📖 Técnica de Cálculo de Variantes", "query": "calculo de variantes xadrez guia avançado"}
+            ]
         }
     }
 }
@@ -155,10 +201,8 @@ def set_user_setting(user_id: int, key: str, value: str):
     user_settings[user_id][key] = value
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
-    """Ищет релевантные видео на YouTube с учетом выбранного языка"""
     if not YOUTUBE_API_KEY:
         return []
-    
     videos = []
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
@@ -185,16 +229,12 @@ def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int =
         print(f"Ошибка поиска YouTube API: {e}")
     return videos
 
-# --- МЕТОДЫ ПОЛУЧЕНИЯ ДАННЫХ ---
-
 def get_chesscom_stats(username: str):
     headers = {'User-Agent': 'ChessCoachBot/1.0'}
     url = f"https://api.chess.com/pub/player/{username}/stats"
     response = requests.get(url, headers=headers)
-    
     if response.status_code != 200:
         return None
-        
     data = response.json()
     return {
         'rapid': data.get('chess_rapid', {}).get('last', {}).get('rating', 0),
@@ -205,10 +245,8 @@ def get_chesscom_stats(username: str):
 def get_lichess_stats(username: str):
     url = f"https://lichess.org/api/user/{username}"
     response = requests.get(url)
-    
     if response.status_code != 200:
         return None
-        
     data = response.json()
     perfs = data.get('perfs', {})
     return {
@@ -216,8 +254,6 @@ def get_lichess_stats(username: str):
         'blitz': perfs.get('blitz', {}).get('rating', 0),
         'bullet': perfs.get('bullet', {}).get('rating', 0),
     }
-
-# --- КНОПКИ НАСТРОЕК ---
 
 def get_settings_keyboard(user_id: int):
     platform = get_user_setting(user_id, "platform", "chesscom")
@@ -234,18 +270,12 @@ def get_settings_keyboard(user_id: int):
     ])
     return keyboard
 
-# --- ХЕНДЛЕРЫ TELEGRAM ---
-
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     lang = get_user_setting(user_id, "lang", "ru")
     t = TEXTS.get(lang, TEXTS["ru"])
-    
-    await message.answer(
-        t["welcome"],
-        reply_markup=get_settings_keyboard(user_id)
-    )
+    await message.answer(t["welcome"], reply_markup=get_settings_keyboard(user_id))
 
 @dp.callback_query(F.data == "toggle_platform")
 async def toggle_platform_cmd(callback: types.CallbackQuery):
@@ -253,7 +283,6 @@ async def toggle_platform_cmd(callback: types.CallbackQuery):
     current_plat = get_user_setting(user_id, "platform", "chesscom")
     new_plat = "lichess" if current_plat == "chesscom" else "chesscom"
     set_user_setting(user_id, "platform", new_plat)
-    
     await callback.message.edit_reply_markup(reply_markup=get_settings_keyboard(user_id))
     await callback.answer()
 
@@ -263,8 +292,6 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
     current_lang = get_user_setting(user_id, "lang", "ru")
     new_lang = LANG_NEXT.get(current_lang, "ru")
     set_user_setting(user_id, "lang", new_lang)
-    
-    # Обновляем текст приветствия при смене языка
     t = TEXTS.get(new_lang, TEXTS["ru"])
     await callback.message.edit_text(t["welcome"], reply_markup=get_settings_keyboard(user_id))
     await callback.answer()
@@ -280,14 +307,10 @@ async def analyze_player(message: types.Message):
     platform_name = "Chess.com" if platform == "chesscom" else "Lichess"
     await message.answer(t["analyzing"].format(username=username, platform=platform_name))
     
-    # Запрос данных
     stats = get_chesscom_stats(username) if platform == "chesscom" else get_lichess_stats(username)
         
     if not stats:
-        await message.answer(
-            t["not_found"].format(platform=platform_name),
-            reply_markup=get_settings_keyboard(user_id)
-        )
+        await message.answer(t["not_found"].format(platform=platform_name), reply_markup=get_settings_keyboard(user_id))
         return
 
     rapid_rating = stats.get('rapid', 0)
@@ -297,15 +320,11 @@ async def analyze_player(message: types.Message):
     current_rating = max(rapid_rating, blitz_rating, bullet_rating)
 
     if current_rating == 0:
-        await message.answer(
-            t["no_games"].format(username=username, platform=platform_name)
-        )
+        await message.answer(t["no_games"].format(username=username, platform=platform_name))
         return
 
-    # Разница ELO между Lichess и Chess.com
     rating_offset = 200 if platform == "lichess" else 0
     
-    # Определение уровня
     if current_rating < (1000 + rating_offset):
         level_key = "beginner"
     elif current_rating < (1600 + rating_offset):
@@ -316,14 +335,15 @@ async def analyze_player(message: types.Message):
     level_name = t["levels"][level_key]
     weak_points = t["weak_points"][level_key]
     search_topics = t["topics"][level_key]
+    article_list = t["articles"][level_key]
 
-    # Ищем видео под каждую тему
+    # Ищем видео
     all_videos = []
     for topic in search_topics:
         found_vids = search_youtube_videos(topic, lang=lang, max_results=1)
         all_videos.extend(found_vids)
 
-    # Формируем отчет
+    # Формируем текст отчета
     text = t["header"].format(username=username, platform=platform_name, level=level_name, rating=current_rating)
     text += t["ratings"]
     
@@ -343,6 +363,13 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
+    # Блок статей
+    text += t["articles_header"]
+    for idx, art in enumerate(article_list, 1):
+        encoded_query = urllib.parse.quote(art["query"])
+        google_search_url = f"https://www.google.com/search?q={encoded_query}"
+        text += f"{idx}. [{art['title']}]({google_search_url})\n"
+
     await message.answer(
         text, 
         parse_mode="Markdown", 
@@ -350,7 +377,7 @@ async def analyze_player(message: types.Message):
         reply_markup=get_settings_keyboard(user_id)
     )
 
-# Фейковый веб-сервер для поддержания Render в активном состоянии
+# Фейковый веб-сервер для UptimeRobot / Render
 async def handle_ping(request):
     return web.Response(text="Bot is alive!")
 
