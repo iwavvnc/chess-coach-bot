@@ -64,16 +64,16 @@ TEXTS = {
         },
         "articles": {
             "beginner": [
-                {"title": "📖 Правила шахматного дебюта (Chess.com)", "url": "https://www.chess.com/ru/article/view/pravila-shakhmatnogo-debyuta"},
-                {"title": "📖 Как устранить зевы и ошибки (Chess-World)", "url": "https://chess-world.ru/kak-perestat-zevat-v-shaxmatax/"}
+                {"title": "📖 Принципы шахматного дебюта (Chess.com)", "url": "https://www.chess.com/ru/terms/shakhmatnyi-debiut"},
+                {"title": "📖 Базовые матовые паттерны (Lichess)", "url": "https://lichess.org/practice/checkmates/checkmate-patterns/A8A21Maa/3_6d8dmd"}
             ],
             "intermediate": [
-                {"title": "📖 Построение плана в миттельшпиле (Chess-World)", "url": "https://chess-world.ru/planirovanie-v-shaxmatax/"},
-                {"title": "📖 Основы пешечных окончаний (Chess.com)", "url": "https://www.chess.com/ru/article/view/peshechnye-endshpili-osnovy"}
+                {"title": "📖 Миттельшпиль в шахматах (Chess.com)", "url": "https://www.chess.com/ru/terms/mittelshpil-v-shakhmatakh"},
+                {"title": "📖 Практика эндшпиля: Пешечные окончания (Lichess)", "url": "https://lichess.org/practice/pawn-endgames/key-squares/L9ed4uI3/l529EawB"}
             ],
             "advanced": [
-                {"title": "📖 Искусство расчета вариантов в шахматах (Chess.com)", "url": "https://www.chess.com/ru/article/view/raschet-variantov-v-shakhmatakh"},
-                {"title": "📖 Руководство по сложным ладейным окончаниям (Lichess Study)", "url": "https://lichess.org/study/RookEndgames"}
+                {"title": "📖 Расчет вариантов и кандидаты ходов (Chess.com)", "url": "https://www.chess.com/ru/article/view/kandidaty-v-khody-v-shakhmatakh"},
+                {"title": "📖 Курс по ладейным окончаниям (Lichess Study)", "url": "https://lichess.org/study/vQWfGzO7"}
             ]
         }
     },
@@ -120,16 +120,16 @@ TEXTS = {
         },
         "articles": {
             "beginner": [
-                {"title": "📖 The 10 Principles of Openings (Chess.com)", "url": "https://www.chess.com/article/view/the-principles-of-the-opening"},
-                {"title": "📖 How to Stop Blundering (Chess.com)", "url": "https://www.chess.com/article/view/how-to-stop-blundering-in-chess"}
+                {"title": "📖 Opening Principles in Chess (Chess.com)", "url": "https://www.chess.com/terms/chess-openings"},
+                {"title": "📖 Basic Checkmate Patterns Practice (Lichess)", "url": "https://lichess.org/practice/checkmates/checkmate-patterns/A8A21Maa/3_6d8dmd"}
             ],
             "intermediate": [
-                {"title": "📖 How to Create a Middlegame Plan (Lichess)", "url": "https://lichess.org/blog/XyZ123/middlegame-planning-guide"},
-                {"title": "📖 Fundamental Pawn Endgames (Chess.com)", "url": "https://www.chess.com/article/view/pawn-endgames-guide"}
+                {"title": "📖 Middlegame Strategy Fundamentals (Chess.com)", "url": "https://www.chess.com/terms/chess-middlegame"},
+                {"title": "📖 Pawn Endgames Practice (Lichess)", "url": "https://lichess.org/practice/pawn-endgames/key-squares/L9ed4uI3/l529EawB"}
             ],
             "advanced": [
-                {"title": "📖 Calculation & Candidate Moves (Chess.com)", "url": "https://www.chess.com/article/view/calculation-in-chess"},
-                {"title": "📖 Masterclass: Complex Rook Endgames (Lichess)", "url": "https://lichess.org/study/RookEndgames"}
+                {"title": "📖 Candidate Moves & Calculation (Chess.com)", "url": "https://www.chess.com/article/view/candidate-moves-chess"},
+                {"title": "📖 Comprehensive Rook Endgames Course (Lichess Study)", "url": "https://lichess.org/study/vQWfGzO7"}
             ]
         }
     },
@@ -176,16 +176,16 @@ TEXTS = {
         },
         "articles": {
             "beginner": [
-                {"title": "📖 Princípios Fundamentais da Abertura (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/principios-da-abertura-no-xadrez"},
-                {"title": "📖 Como evitar erros táticos no Xadrez (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/erros-taticos-xadrez"}
+                {"title": "📖 Princípios da Abertura no Xadrez (Chess.com)", "url": "https://www.chess.com/pt-BR/terms/abertura-de-xadrez"},
+                {"title": "📖 Treino Prático de Padrões de Mate (Lichess)", "url": "https://lichess.org/practice/checkmates/checkmate-patterns/A8A21Maa/3_6d8dmd"}
             ],
             "intermediate": [
-                {"title": "📖 Como criar um plano no Meio-Jogo (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/como-planejar-no-meio-jogo"},
-                {"title": "📖 Guia Essencial de Finais de Peões (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/finais-de-peoes"}
+                {"title": "📖 Estratégia de Meio-Jogo (Chess.com)", "url": "https://www.chess.com/pt-BR/terms/meio-jogo-xadrez"},
+                {"title": "📖 Prática de Finais de Peões (Lichess)", "url": "https://lichess.org/practice/pawn-endgames/key-squares/L9ed4uI3/l529EawB"}
             ],
             "advanced": [
-                {"title": "📖 Cálculo de Variantes Avançado (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/calculo-de-variantes"},
-                {"title": "📖 Estudo de Finais de Torres (Lichess)", "url": "https://lichess.org/study/RookEndgames"}
+                {"title": "📖 Cálculo de Variantes e Lances Candidatos (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/calculo-de-variantes"},
+                {"title": "📖 Estudo Completo de Finais de Torres (Lichess)", "url": "https://lichess.org/study/vQWfGzO7"}
             ]
         }
     }
@@ -362,7 +362,7 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Блок прямых ссылок на статьи
+    # Блок прямых проверенных ссылок на статьи и интерактивные гиды
     text += t["articles_header"]
     for idx, art in enumerate(article_list, 1):
         text += f"{idx}. [{art['title']}]({art['url']})\n"
