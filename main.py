@@ -24,6 +24,24 @@ user_settings = {}
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
+# Базовая база дебютов по первым ходам
+OPENING_PATTERNS = {
+    "e4 e5 Nf3 Nc6 Bc4": "Итальянская партия (Italian Game)",
+    "e4 e5 Nf3 Nc6 Bb5": "Испанская партия (Ruy Lopez)",
+    "e4 c5": "Сицилианская защита (Sicilian Defense)",
+    "e4 e6": "Французская защита (French Defense)",
+    "e4 c6": "Защита Каро-Канн (Caro-Kann Defense)",
+    "d4 d5 c4": "Ферзевый гамбит (Queen's Gambit)",
+    "d4 Nf6 c4 g6": "Староиндийская защита (King's Indian Defense)",
+    "d4 Nf6 c4 e6": "Защита Нимцовича / Новоиндийская",
+    "e4 e5 Nf3 Nf6": "Русская партия (Petrov Defense)",
+    "e4 d5": "Скандинавская защита (Scandinavian Defense)",
+    "c4": "Английское начало (English Opening)",
+    "Nf3": "Дебют Рети (Réti Opening)",
+    "d4 d5": "Дебют ферзевых пешек (Queen's Pawn Game)",
+    "e4 e5": "Открытый дебют (Open Game)"
+}
+
 CHESS_QUOTES = {
     "ru": [
         "«Если видишь хороший ход — не спеши, поищи ход лучше.» — *Эмануил Ласкер*",
@@ -55,7 +73,8 @@ LANG_DATA = {
         "header": "📋 **РАЗБОР ТВОИХ ПАРТИЙ ОТ AI-ТРЕНЕРА ({count} игр)**\nИгрок: `{username}` ({platform})\n\nСлушай, я внимательно изучил твои последние игры. Вот что я заметил:\n\n",
         "opening_header": "📖 **ТВОЙ ДЕБЮТНЫЙ РЕПЕРТУАР:**\n",
         "best_opening": "🟢 **Твой лучший дебют:** {opening} (Побед: {winrate}%)\n",
-        "worst_opening": "🔴 **Проблемный дебют:** {opening} (Побед: {winrate}%)\n👉 *Тренерская рекомендация:* Посмотри теории по этому дебюту, ты теряешь в нем много очков!\n\n",
+        "worst_opening": "🔴 **Проблемный дебют:** {opening} (Побед: {winrate}%)\n👉 *Тренерская рекомендация:* Посмотри теорию по этому дебюту, ты теряешь в нем очка!\n\n",
+        "single_opening": "📊 **Твой основной дебют:** {opening} (Побед: {winrate}%)\n\n",
         "plan_header": "\n🎬 **Видео для разбора (обязательно глянь на досуге):**\n",
         "trainers_header": "\n🧩 **Задание в приложении ({platform}):**\n",
         "weekly_task": "\n📝 **ТВОЁ ТРЕНЕРСКОЕ ЗАДАНИЕ НА ЭТУ НЕДЕЛЮ:**\n",
@@ -91,7 +110,8 @@ LANG_DATA = {
         "header": "📋 **AI COACH GAME REVIEW ({count} games)**\nPlayer: `{username}` ({platform})\n\nHere is what I noticed in your recent games:\n\n",
         "opening_header": "📖 **YOUR OPENING REPERTOIRE:**\n",
         "best_opening": "🟢 **Best opening:** {opening} (Winrate: {winrate}%)\n",
-        "worst_opening": "🔴 **Trouble opening:** {opening} (Winrate: {winrate}%)\n👉 *Coach Advice:* Study some theory for this opening, you are dropping points here!\n\n",
+        "worst_opening": "🔴 **Trouble opening:** {opening} (Winrate: {winrate}%)\n👉 *Coach Advice:* Study some theory for this opening!\n\n",
+        "single_opening": "📊 **Main opening:** {opening} (Winrate: {winrate}%)\n\n",
         "plan_header": "\n🎬 **Recommended Lessons:**\n",
         "trainers_header": "\n🧩 **Practice in ({platform}):**\n",
         "weekly_task": "\n📝 **YOUR COACHING TASK FOR THIS WEEK:**\n",
@@ -127,7 +147,8 @@ LANG_DATA = {
         "header": "📋 **ANÁLISE DO TREINADOR IA ({count} partidas)**\nJogador: `{username}` ({platform})\n\nEis o que notei nas tuas partidas recentes:\n\n",
         "opening_header": "📖 **O TEU REPERTÓRIO DE ABERTURA:**\n",
         "best_opening": "🟢 **Melhor abertura:** {opening} (Vitórias: {winrate}%)\n",
-        "worst_opening": "🔴 **Abertura problemática:** {opening} (Vitórias: {winrate}%)\n👉 *Conselho do Treinador:* Estuda a teoria desta abertura, estás a perder pontos aqui!\n\n",
+        "worst_opening": "🔴 **Abertura problemática:** {opening} (Vitórias: {winrate}%)\n👉 *Conselho do Treinador:* Estuda a teoria desta abertura!\n\n",
+        "single_opening": "📊 **Abertura principal:** {opening} (Vitórias: {winrate}%)\n\n",
         "plan_header": "\n🎬 **Aulas Recomendadas:**\n",
         "trainers_header": "\n🧩 **Exercícios em ({platform}):**\n",
         "weekly_task": "\n📝 **A TUA TAREFA DA SEMANA:**\n",
@@ -216,6 +237,26 @@ def set_user_setting(user_id: int, key: str, value: str):
     if user_id not in user_settings:
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
+
+def detect_opening_from_moves(game) -> str:
+    # 1. Попытка считать напрямую из тега PGN
+    opening_tag = game.headers.get("Opening", "")
+    if opening_tag and opening_tag != "?":
+        return opening_tag.split(":")[0].split(",")[0].strip()
+        
+    # 2. Если тега нет — определяем по первым ходам
+    board = game.board()
+    moves_san = []
+    for move in list(game.mainline_moves())[:6]:
+        moves_san.append(board.san(move))
+        board.push(move)
+    
+    moves_str = " ".join(moves_san)
+    for pattern, name in OPENING_PATTERNS.items():
+        if moves_str.startswith(pattern):
+            return name
+            
+    return "Другой дебют / Нестандартное начало"
 
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
@@ -372,23 +413,18 @@ async def analyze_player(message: types.Message):
         if pgn_text:
             pgn = chess.pgn.read_game(io.StringIO(pgn_text))
             if pgn:
-                # Анализ Дебютов
-                opening_name = pgn.headers.get("Opening", "Unknown Opening")
-                # Убираем лишнюю детализацию подвариантов для простоты
-                clean_opening = opening_name.split(":")[0].split(",")[0].strip()
+                # Определяем дебют
+                opening_name = detect_opening_from_moves(pgn)
                 
-                # Проверяем результат
+                # Результат
                 white_player = pgn.headers.get("White", "").lower()
-                black_player = pgn.headers.get("Black", "").lower()
                 result = pgn.headers.get("Result", "*")
-                
                 user_is_white = username.lower() in white_player
                 is_win = (user_is_white and result == "1-0") or (not user_is_white and result == "0-1")
                 
-                if clean_opening != "Unknown Opening":
-                    openings_stats[clean_opening]["total"] += 1
-                    if is_win:
-                        openings_stats[clean_opening]["wins"] += 1
+                openings_stats[opening_name]["total"] += 1
+                if is_win:
+                    openings_stats[opening_name]["wins"] += 1
 
                 # Анализ Тактики
                 moves = list(pgn.mainline_moves())
@@ -419,11 +455,9 @@ async def analyze_player(message: types.Message):
     # Формируем отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
-    # 1. Блок Анализа Дебютов
+    # 1. Блок Дебютов
     if openings_stats:
         text += t["opening_header"]
-        
-        # Находим лучший и худший дебют
         sorted_openings = sorted(
             openings_stats.items(), 
             key=lambda item: (item[1]["wins"] / item[1]["total"]), 
@@ -432,14 +466,14 @@ async def analyze_player(message: types.Message):
         
         best = sorted_openings[0]
         best_winrate = int((best[1]["wins"] / best[1]["total"]) * 100)
-        text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
         
         if len(sorted_openings) > 1:
             worst = sorted_openings[-1]
             worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100)
+            text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
             text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
         else:
-            text += "\n"
+            text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
 
     # 2. Пояснение тактических проблем
     for key in detected_keys:
