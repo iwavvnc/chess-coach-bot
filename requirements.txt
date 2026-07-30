@@ -2,4 +2,4 @@ aiogram
 requests
 aiohttp
 google-api-python-client
-ddgs
+python-chess
