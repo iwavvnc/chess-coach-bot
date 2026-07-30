@@ -175,20 +175,45 @@ def set_user_setting(user_id: int, key: str, value: str):
     user_settings[user_id][key] = value
 
 # --- ДИНАМИЧЕСКИЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO ---
+# --- ДИНАМИЧЕСКИЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO ---
 def search_articles_ddg(query_topic: str, lang: str = "ru") -> list:
     articles = []
+    
+    # 1. Сначала пробуем прямой поиск через DDGS
     try:
         prefix = "Xadrez" if lang == "pt" else ("Chess" if lang == "en" else "Шахматы")
         search_query = f"{prefix} {query_topic}"
         
-        results = DDGS().text(keywords=search_query, region=f"{lang}-{lang.upper()}", max_results=1)
+        # Запрашиваем без региональных ограничений, чтобы избежать пустых результатов
+        results = list(DDGS().text(keywords=search_query, max_results=3))
+        
         for item in results:
-            articles.append({
-                "title": item.get("title"),
-                "url": item.get("href")
-            })
+            title = item.get("title")
+            url = item.get("href")
+            if title and url:
+                articles.append({"title": title, "url": url})
+                break  # Берем первую хорошую ссылку
     except Exception as e:
-        print(f"Ошибка поиска DuckDuckGo: {e}")
+        print(f"Ошибка DDG text: {e}")
+
+    # 2. Если поиск не вернул результат — отдаем надежный прямой ресурс по шахматам
+    if not articles:
+        fallback_urls = {
+            "ru": {
+                "title": f"📚 База знаний и статей: {query_topic.capitalize()}",
+                "url": f"https://www.google.com/search?q=шахматы+{query_topic.replace(' ', '+')}"
+            },
+            "en": {
+                "title": f"📚 Chess Guides & Articles: {query_topic.capitalize()}",
+                "url": f"https://www.google.com/search?q=chess+{query_topic.replace(' ', '+')}"
+            },
+            "pt": {
+                "title": f"📚 Artigos e Guias de Xadrez: {query_topic.capitalize()}",
+                "url": f"https://www.google.com/search?q=xadrez+{query_topic.replace(' ', '+')}"
+            }
+        }
+        articles.append(fallback_urls.get(lang, fallback_urls["ru"]))
+
     return articles
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
