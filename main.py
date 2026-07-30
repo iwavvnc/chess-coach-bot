@@ -1,6 +1,7 @@
 import os
 import asyncio
 import requests
+import chess
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -20,127 +21,37 @@ LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "
 
 TEXTS = {
     "ru": {
-        "welcome": "👋 Привет! Я твой персональный шахматный тренер.\n\nНастрой платформу и язык, а затем отправь свой **никнейм**:",
-        "analyzing": "🔍 Провожу глубокий анализ профиля `{username}` на {platform}...",
+        "welcome": "👋 Привет! Я твой персональный AI-тренер по шахматам.\n\nНастрой платформу и язык, а затем отправь свой **никнейм**:",
+        "analyzing": "🔍 Скачиваю и анализирую последние **{count} партий** для `{username}` на {platform}...",
         "not_found": "❌ Игрок не найден на {platform}. Проверь написание никнейма!",
-        "no_games": "📊 Игрок **{username}** найден на {platform}, но у него нет сыгранных партий.",
-        "header": "📊 **ГЛУБОКИЙ АНАЛИЗ ПРОФИЛЯ:** `{username}` ({platform})\n🎖️ Уровень: **{level}** (Макс. ELO: **{rating}**)\n\n",
-        "ratings": "📌 **Оценки контролей времени:**\n",
-        "rapid": "• Рапид: **{rating} ELO**\n",
-        "blitz": "• Блиц: **{rating} ELO**\n",
-        "bullet": "• Пуля: **{rating} ELO**\n\n",
-        "weak_header": "🔍 **Выявленные слабые места в игре:**\n",
-        "plan_header": "\n🎬 **Персональный учебный план (Видео-уроки):**\n",
+        "no_games": "📊 Игрок **{username}** найден, но у него нет сыгранных партий.",
+        "header": "📊 **ГЛУБОКИЙ AI-АНАЛИЗ {count} ПОСЛЕДНИХ ПАРТИЙ**\nИгрок: `{username}` ({platform})\n\n",
+        "weak_header": "🎯 **Фактические проблемы, выявленные движком:**\n",
+        "plan_header": "\n🎬 **Персональные видео-уроки по твоим ошибкам:**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
-        "levels": {
-            "beginner": "Начинающий уровень",
-            "intermediate": "Любительский уровень",
-            "advanced": "Продвинутый уровень"
-        },
-        "weak_points": {
-            "beginner": [
-                "⚠️ **Тактика и зевы:** Регулярная потеря незащищенных фигур и пропуск простых матов в 1-2 хода.",
-                "⚠️ **Дебют:** Отсутствие контроля центра, слишком частые ходы одной и той же фигурой в начале.",
-                "⚠️ **Тайм-менеджмент:** Паника при нехватке времени, спешка в простых позициях."
-            ],
-            "intermediate": [
-                "⚠️ **Дебютная подготовка:** Слабое знание типовых планов и пешечных структур после 5-7 ходов.",
-                "⚠️ **Миттельшпиль:** Трудности с построением долгосрочного плана игры и атаки на короля.",
-                "⚠️ **Эндшпиль:** Недостаток техники в реализации материального перевеса (пешечные и ладейные окончания)."
-            ],
-            "advanced": [
-                "⚠️ **Глубокий расчет:** Нехватка точности в форсированных вариантах на 3+ ходов вперед.",
-                "⚠️ **Сложные эндшпили:** Погрешности в ладейных и фигурных окончаниях при равном материале.",
-                "⚠️ **Профилактика:** Недостаточный учет контригры соперника."
-            ]
-        },
-        "yt_topics": {
-            "beginner": ["базовые зевы фигуры шахматы", "основы дебюта контроль центра шахматы"],
-            "intermediate": ["типовые планы в миттельшпиле шахматы", "основы пешечных окончаний шахматы"],
-            "advanced": ["глубокий расчет вариантов шахматы", "ладейные окончания мастер класс шахматы"]
-        }
+        "no_blunders": "✅ Отличная игра! Серьезных грубых зевов в последних партиях не обнаружено."
     },
     "en": {
-        "welcome": "👋 Hi! I am your personal chess coach.\n\nConfigure your platform and language, then send your **username**:",
-        "analyzing": "🔍 Performing deep profile analysis for `{username}` on {platform}...",
+        "welcome": "👋 Hi! I am your personal AI chess coach.\n\nConfigure your platform and language, then send your **username**:",
+        "analyzing": "🔍 Downloading and analyzing the last **{count} games** for `{username}` on {platform}...",
         "not_found": "❌ Player not found on {platform}. Check your username spelling!",
-        "no_games": "📊 Player **{username}** found on {platform}, but has no played games.",
-        "header": "📊 **DEEP PROFILE ANALYSIS:** `{username}` ({platform})\n🎖️ Level: **{level}** (Max ELO: **{rating}**)\n\n",
-        "ratings": "📌 **Time Control Ratings:**\n",
-        "rapid": "• Rapid: **{rating} ELO**\n",
-        "blitz": "• Blitz: **{rating} ELO**\n",
-        "bullet": "• Bullet: **{rating} ELO**\n\n",
-        "weak_header": "🔍 **Identified Weaknesses:**\n",
-        "plan_header": "\n🎬 **Personal Training Plan (Video Lessons):**\n",
+        "no_games": "📊 Player **{username}** found, but has no recent games.",
+        "header": "📊 **DEEP AI ANALYSIS OF LAST {count} GAMES**\nPlayer: `{username}` ({platform})\n\n",
+        "weak_header": "🎯 **Specific Weaknesses Identified by Engine:**\n",
+        "plan_header": "\n🎬 **Personal Video Lessons Based on Your Errors:**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
-        "levels": {
-            "beginner": "Beginner Level",
-            "intermediate": "Intermediate Level",
-            "advanced": "Advanced Level"
-        },
-        "weak_points": {
-            "beginner": [
-                "⚠️ **Tactics & Blunders:** Frequently hanging pieces and missing basic 1-2 move mates.",
-                "⚠️ **Opening:** Lack of center control, moving the same piece multiple times early on.",
-                "⚠️ **Time Management:** Panic under low time, rushing in simple positions."
-            ],
-            "intermediate": [
-                "⚠️ **Opening Prep:** Weak knowledge of standard plans and pawn structures after 5-7 moves.",
-                "⚠️ **Middlegame:** Difficulty constructing long-term attack plans.",
-                "⚠️ **Endgame:** Lack of technique in converting material advantage (pawn and rook endgames)."
-            ],
-            "advanced": [
-                "⚠️ **Calculation:** Inaccuracies in forced lines 3+ moves ahead.",
-                "⚠️ **Complex Endgames:** Small errors in rook/piece endgames with equal material.",
-                "⚠️ **Prophylaxis:** Insufficient awareness of opponent's counterplay."
-            ]
-        },
-        "yt_topics": {
-            "beginner": ["avoid blunders chess beginner", "opening principles center control chess"],
-            "intermediate": ["middlegame plans chess guide", "pawn endgame basics chess"],
-            "advanced": ["deep calculation chess grandmaster", "rook endgame masterclass chess"]
-        }
+        "no_blunders": "✅ Great play! No severe blunders detected in recent games."
     },
     "pt": {
-        "welcome": "👋 Olá! Sou o seu treinador pessoal de xadrez.\n\nConfigure a plataforma e o idioma e, em seguida, envie o seu **nome de utilizador**:",
-        "analyzing": "🔍 A realizar análise detalhada do perfil `{username}` no {platform}...",
+        "welcome": "👋 Olá! Sou o seu treinador pessoal de xadrez com IA.\n\nConfigure a plataforma e o idioma e, em seguida, envie o seu **nome de utilizador**:",
+        "analyzing": "🔍 A descarregar e analisar as últimas **{count} partidas** de `{username}` no {platform}...",
         "not_found": "❌ Jogador não encontrado no {platform}. Verifique o nome de utilizador!",
-        "no_games": "📊 Jogador **{username}** encontrado no {platform}, mas sem partidas jogadas.",
-        "header": "📊 **ANÁLISE DETALHADA DO PERFIL:** `{username}` ({platform})\n🎖️ Nível: **{level}** (ELO Máx: **{rating}**)\n\n",
-        "ratings": "📌 **Classificações por Controlo de Tempo:**\n",
-        "rapid": "• Semi-Rápidas: **{rating} ELO**\n",
-        "blitz": "• Blitz: **{rating} ELO**\n",
-        "bullet": "• Bullet: **{rating} ELO**\n\n",
-        "weak_header": "🔍 **Pontos Fracos Identificados:**\n",
-        "plan_header": "\n🎬 **Plano de Treino Personalizado (Vídeo-Aulas):**\n",
+        "no_games": "📊 Jogador **{username}** encontrado, mas sem partidas recentes.",
+        "header": "📊 **ANÁLISE PROFUNDA COM IA DAS ÚLTIMAS {count} PARTIDAS**\nJogador: `{username}` ({platform})\n\n",
+        "weak_header": "🎯 **Problemas Específicos Identificados pelo Motor:**\n",
+        "plan_header": "\n🎬 **Vídeo-Aulas Personalizadas Baseadas nos Seus Erros:**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
-        "levels": {
-            "beginner": "Nível Iniciante",
-            "intermediate": "Nível Intermédio",
-            "advanced": "Nível Avançado"
-        },
-        "weak_points": {
-            "beginner": [
-                "⚠️ **Tática e Erros Crassos:** Perda frequente de peças desprotegidas e falta de visão de xeque-mate simples.",
-                "⚠️ **Abertura:** Falta de controlo do centro e mover a mesma peça várias vezes no início.",
-                "⚠️ **Gestão de Tempo:** Pânico com pouco tempo e precipitação em posições simples."
-            ],
-            "intermediate": [
-                "⚠️ **Preparação de Abertura:** Pouco conhecimento de planos típicos e estruturas de peões após 5-7 lances.",
-                "⚠️ **Meio-Jogo:** Dificuldades em construir um plano de ataque a longo prazo.",
-                "⚠️ **Final:** Falta de técnica na conversão de vantagem material (finais de peões e torres)."
-            ],
-            "advanced": [
-                "⚠️ **Cálculo Profundo:** Falta de precisão em variantes forçadas a 3+ lances de distância.",
-                "⚠️ **Finais Complexos:** Pequenos erros em finais de torres e peças com material igual.",
-                "⚠️ **Perfilaxia:** Atenção insuficiente ao contra-jogo do adversário."
-            ]
-        },
-        "yt_topics": {
-            "beginner": ["como nao pendurar pecas xadrez", "principios de abertura centro xadrez"],
-            "intermediate": ["planos meio jogo xadrez", "finais de peoes xadrez"],
-            "advanced": ["calculo de variantes xadrez", "finais de torres xadrez"]
-        }
+        "no_blunders": "✅ Excelente jogo! Nenhum erro grave detetado nas últimas partidas."
     }
 }
 
@@ -151,6 +62,85 @@ def set_user_setting(user_id: int, key: str, value: str):
     if user_id not in user_settings:
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
+
+# --- ДЕТЕКТОР ШАХМАТНЫХ ТЕМ ПО FEN ПОЗИЦИИ ---
+def classify_position_error(fen: str, move_number: int) -> dict:
+    board = chess.Board(fen)
+    
+    # 1. Дебютные ошибки
+    if move_number <= 10:
+        return {
+            "topic_ru": "⚠️ **Дебют:** Нарушение принципов развития на первых ходах.",
+            "yt_query_ru": "ошибки в дебюте правила развития шахматы"
+        }
+    
+    # Считаем тяжелые и легкие фигуры
+    rooks = len(board.pieces(chess.ROOK, chess.WHITE)) + len(board.pieces(chess.ROOK, chess.BLACK))
+    queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
+    minor_pieces = len(board.pieces(chess.KNIGHT, chess.WHITE)) + len(board.pieces(chess.BISHOP, chess.WHITE)) + \
+                   len(board.pieces(chess.KNIGHT, chess.BLACK)) + len(board.pieces(chess.BISHOP, chess.BLACK))
+
+    # 2. Пешечные окончания
+    if queens == 0 and rooks == 0 and minor_pieces == 0:
+        return {
+            "topic_ru": "⚠️ **Пешечные окончания:** Ошибки в расчетe оппозиции и проведении пешек.",
+            "yt_query_ru": "пешечные окончания правила шахматы"
+        }
+
+    # 3. Ладейные окончания (Позиции Филидора / Лусены)
+    if queens == 0 and minor_pieces == 0 and rooks > 0:
+        return {
+            "topic_ru": "⚠️ **Ладейные окончания:** Ошибки в позиции Филидора/Лусены и активности ладьи.",
+            "yt_query_ru": "ладейные окончания позиция филидора лусены шахматы"
+        }
+
+    # 4. Атака на короля в центре (Король не рокирован)
+    king_sq_w = board.king(chess.WHITE)
+    king_sq_b = board.king(chess.BLACK)
+    if king_sq_w in [chess.E1, chess.D1] or king_sq_b in [chess.E8, chess.D8]:
+        return {
+            "topic_ru": "⚠️ **Безопасность короля:** Задержка рокировки и застрявший король в центре.",
+            "yt_query_ru": "безопасность короля атака на короля в центре шахматы"
+        }
+
+    # 5. Тактический зев / Миттельшпиль
+    return {
+        "topic_ru": "⚠️ **Тактический зев:** Пропущенная связка, двойной удар или подвисшая фигура.",
+        "yt_query_ru": "как перестать зевать фигуры тактика шахматы"
+    }
+
+# --- ПОЛУЧЕНИЕ ПОСЛЕДНИХ ПАРТИЙ С CHESS.COM И LICHESS ---
+def fetch_recent_games(username: str, platform: str, limit: int = 10) -> list:
+    headers = {'User-Agent': 'ChessCoachBot/1.0'}
+    games = []
+    
+    try:
+        if platform == "chesscom":
+            archives_url = f"https://api.chess.com/pub/player/{username}/games/archives"
+            res = requests.get(archives_url, headers=headers)
+            if res.status_code == 200:
+                archives = res.json().get("archives", [])
+                if archives:
+                    last_month_url = archives[-1]
+                    g_res = requests.get(last_month_url, headers=headers)
+                    if g_res.status_code == 200:
+                        all_g = g_res.json().get("games", [])
+                        games = all_g[-limit:]
+        else: # Lichess
+            url = f"https://lichess.org/api/games/user/{username}?max={limit}&pgnInBody=true"
+            headers_lic = {'Accept': 'application/x-ndjson'}
+            res = requests.get(url, headers=headers_lic)
+            if res.status_code == 200:
+                # В Lichess отдается ndjson
+                lines = res.text.strip().split('\n')
+                for line in lines:
+                    if line:
+                        import json
+                        games.append(json.loads(line))
+    except Exception as e:
+        print(f"Ошибка получения партий: {e}")
+        
+    return games
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
@@ -177,32 +167,6 @@ def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int =
     except Exception as e:
         print(f"Ошибка поиска YouTube API: {e}")
     return videos
-
-def get_chesscom_stats(username: str):
-    headers = {'User-Agent': 'ChessCoachBot/1.0'}
-    url = f"https://api.chess.com/pub/player/{username}/stats"
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        return None
-    data = response.json()
-    return {
-        'rapid': data.get('chess_rapid', {}).get('last', {}).get('rating', 0),
-        'blitz': data.get('chess_blitz', {}).get('last', {}).get('rating', 0),
-        'bullet': data.get('chess_bullet', {}).get('last', {}).get('rating', 0),
-    }
-
-def get_lichess_stats(username: str):
-    url = f"https://lichess.org/api/user/{username}"
-    response = requests.get(url)
-    if response.status_code != 200:
-        return None
-    data = response.json()
-    perfs = data.get('perfs', {})
-    return {
-        'rapid': perfs.get('rapid', {}).get('rating', 0),
-        'blitz': perfs.get('blitz', {}).get('rating', 0),
-        'bullet': perfs.get('bullet', {}).get('rating', 0),
-    }
 
 def get_settings_keyboard(user_id: int):
     platform = get_user_setting(user_id, "platform", "chesscom")
@@ -240,7 +204,7 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     current_lang = get_user_setting(user_id, "lang", "ru")
     new_lang = LANG_NEXT.get(current_lang, "ru")
-    set_user_setting(user_id, "lang", new_lang)
+    set_user_setting(user_id, "new_lang", new_lang)
     t = TEXTS.get(new_lang, TEXTS["ru"])
     await callback.message.edit_text(t["welcome"], reply_markup=get_settings_keyboard(user_id))
     await callback.answer()
@@ -253,56 +217,63 @@ async def analyze_player(message: types.Message):
     t = TEXTS.get(lang, TEXTS["ru"])
     username = message.text.strip()
     
+    # Для бесплатной версии зафиксируем 10 партий
+    games_limit = 10
     platform_name = "Chess.com" if platform == "chesscom" else "Lichess"
-    await message.answer(t["analyzing"].format(username=username, platform=platform_name))
     
-    stats = get_chesscom_stats(username) if platform == "chesscom" else get_lichess_stats(username)
-        
-    if not stats:
+    await message.answer(t["analyzing"].format(username=username, platform=platform_name, count=games_limit))
+    
+    games = fetch_recent_games(username, platform, limit=games_limit)
+    
+    if not games:
         await message.answer(t["not_found"].format(platform=platform_name), reply_markup=get_settings_keyboard(user_id))
         return
 
-    rapid_rating = stats.get('rapid', 0)
-    blitz_rating = stats.get('blitz', 0)
-    bullet_rating = stats.get('bullet', 0)
-    
-    current_rating = max(rapid_rating, blitz_rating, bullet_rating)
+    detected_issues = []
+    yt_queries = []
 
-    if current_rating == 0:
-        await message.answer(t["no_games"].format(username=username, platform=platform_name))
-        return
+    # Разбираем партии и классифицируем проблемы
+    for idx, game in enumerate(games, 1):
+        # Достаем PGN / ходы партии
+        pgn_text = game.get("pgn", "")
+        if pgn_text:
+            import io
+            pgn = chess.pgn.read_game(io.StringIO(pgn_text))
+            if pgn:
+                board = pgn.board()
+                moves = list(pgn.mainline_moves())
+                
+                # Анализируем позицию в середине партии (где обычно происходят переломы)
+                half_move = len(moves) // 2
+                for i, move in enumerate(moves):
+                    board.push(move)
+                    if i == half_move and len(moves) > 10:
+                        fen = board.fen()
+                        issue = classify_position_error(fen, move_number=i//2)
+                        
+                        if issue["topic_ru"] not in detected_issues:
+                            detected_issues.append(issue["topic_ru"])
+                            yt_queries.append(issue["yt_query_ru"])
 
-    rating_offset = 200 if platform == "lichess" else 0
-    
-    if current_rating < (1000 + rating_offset):
-        level_key = "beginner"
-    elif current_rating < (1600 + rating_offset):
-        level_key = "intermediate"
-    else:
-        level_key = "advanced"
+    # Ограничиваем топ-3 главными проблемами
+    detected_issues = detected_issues[:3]
+    yt_queries = yt_queries[:3]
 
-    level_name = t["levels"][level_key]
-    weak_points = t["weak_points"][level_key]
-    yt_topics = t["yt_topics"][level_key]
-
-    # Ищем обучающие видео через YouTube API
+    # Подгружаем видео с YouTube по найденным проблемам
     all_videos = []
-    for topic in yt_topics:
-        found_vids = search_youtube_videos(topic, lang=lang, max_results=1)
-        all_videos.extend(found_vids)
+    for q in yt_queries:
+        vids = search_youtube_videos(q, lang=lang, max_results=1)
+        all_videos.extend(vids)
 
-    # Формируем аккуратный и лаконичный отчёт
-    text = t["header"].format(username=username, platform=platform_name, level=level_name, rating=current_rating)
-    text += t["ratings"]
-    
-    if rapid_rating: text += t["rapid"].format(rating=rapid_rating)
-    if blitz_rating: text += t["blitz"].format(rating=blitz_rating)
-    if bullet_rating: text += t["bullet"].format(rating=bullet_rating)
-    text += "\n"
-
+    # Собираем отчёт
+    text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
-    for wp in weak_points:
-        text += f"{wp}\n"
+    
+    if detected_issues:
+        for issue in detected_issues:
+            text += f"{issue}\n"
+    else:
+        text += t["no_blunders"] + "\n"
 
     text += t["plan_header"]
     if all_videos:
