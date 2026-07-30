@@ -176,45 +176,66 @@ def set_user_setting(user_id: int, key: str, value: str):
 
 # --- ДИНАМИЧЕСКИЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO ---
 # --- ДИНАМИЧЕСКИЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO ---
+# --- РАСШИРЕННАЯ БАЗА ЗНАНИЙ (CHESSBASE, LICHESS, CHESSTEMPO, CHESS.COM) ---
 def search_articles_ddg(query_topic: str, lang: str = "ru") -> list:
-    articles = []
+    topic_encoded = query_topic.replace(' ', '+')
     
-    # 1. Сначала пробуем прямой поиск через DDGS
-    try:
-        prefix = "Xadrez" if lang == "pt" else ("Chess" if lang == "en" else "Шахматы")
-        search_query = f"{prefix} {query_topic}"
-        
-        # Запрашиваем без региональных ограничений, чтобы избежать пустых результатов
-        results = list(DDGS().text(keywords=search_query, max_results=3))
-        
-        for item in results:
-            title = item.get("title")
-            url = item.get("href")
-            if title and url:
-                articles.append({"title": title, "url": url})
-                break  # Берем первую хорошую ссылку
-    except Exception as e:
-        print(f"Ошибка DDG text: {e}")
-
-    # 2. Если поиск не вернул результат — отдаем надежный прямой ресурс по шахматам
-    if not articles:
-        fallback_urls = {
-            "ru": {
-                "title": f"📚 База знаний и статей: {query_topic.capitalize()}",
-                "url": f"https://www.google.com/search?q=шахматы+{query_topic.replace(' ', '+')}"
+    # Формируем подборку лучших шахматных ресурсов по языкам
+    resources = {
+        "ru": [
+            {
+                "title": f"📰 Новости и тактика: {query_topic.capitalize()} (ChessBase)",
+                "url": f"https://ru.chessbase.com/search?searchTerm={topic_encoded}"
             },
-            "en": {
-                "title": f"📚 Chess Guides & Articles: {query_topic.capitalize()}",
-                "url": f"https://www.google.com/search?q=chess+{query_topic.replace(' ', '+')}"
+            {
+                "title": f"🧩 Интерактивная практика (Lichess)",
+                "url": "https://lichess.org/practice"
             },
-            "pt": {
-                "title": f"📚 Artigos e Guias de Xadrez: {query_topic.capitalize()}",
-                "url": f"https://www.google.com/search?q=xadrez+{query_topic.replace(' ', '+')}"
+            {
+                "title": f"📖 Учебный материал: {query_topic.capitalize()} (Chess.com)",
+                "url": f"https://www.chess.com/ru/lessons/search?q={topic_encoded}"
             }
-        }
-        articles.append(fallback_urls.get(lang, fallback_urls["ru"]))
+        ],
+        "en": [
+            {
+                "title": f"📰 Articles & Guides: {query_topic.capitalize()} (ChessBase)",
+                "url": f"https://en.chessbase.com/search?searchTerm={topic_encoded}"
+            },
+            {
+                "title": f"🧩 Tactical Training & Endgames (Chesstempo)",
+                "url": "https://chesstempo.com/chess-tactics/"
+            },
+            {
+                "title": f"📖 Guides & Interactive Lessons (Lichess)",
+                "url": "https://lichess.org/practice"
+            },
+            {
+                "title": f"📚 Free Courses (Chessable)",
+                "url": "https://www.chessable.com/courses/all/all/free/"
+            }
+        ],
+        "pt": [
+            {
+                "title": f"📰 Artigos e Notícias: {query_topic.capitalize()} (ChessBase PT)",
+                "url": f"https://pt.chessbase.com/search?searchTerm={topic_encoded}"
+            },
+            {
+                "title": f"🧩 Treino Tático e Prática (Lichess)",
+                "url": "https://lichess.org/practice"
+            },
+            {
+                "title": f"📖 Guia de Aberturas e Finais (Chesstempo)",
+                "url": "https://pt.chesstempo.com/"
+            }
+        ]
+    }
 
-    return articles
+    # Берем ресурсы под текущий язык
+    lang_res = resources.get(lang, resources["ru"])
+    
+    # Циклически выбираем разные ресурсы для разных тем, чтобы список был разнообразным
+    index = hash(query_topic) % len(lang_res)
+    return [lang_res[index]]
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
