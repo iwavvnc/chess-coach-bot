@@ -58,50 +58,50 @@ TEXTS = {
     }
 }
 
-# --- ИСПРАВЛЕННАЯ БАЗА ТРЕНАЖЕРОВ ПО ПЛАТФОРМАМ ---
+# --- ИСПРАВЛЕННЫЕ И ПРОВЕРЕННЫЕ ССЫЛКИ ДЛЯ ОБЕИХ ПЛАТФОРМ ---
 TRAINER_DATABASE = {
     "lichess": {
         "undefended": {
-            "title": "⚡ Тренажер Lichess: Борьба с зевками",
+            "title": "⚡ Lichess: Борьба с зевками (Hanging Pieces)",
             "url": "https://lichess.org/practice/basic-tactics/hanging-pieces/R8a9W4G2"
         },
         "back_rank": {
-            "title": "🧱 Тренажер Lichess: Мат по 8-й горизонтали",
+            "title": "🧱 Lichess: Мат на 8-й горизонтали",
             "url": "https://lichess.org/practice/checkmates/checkmate-patterns/D3yF7H1R"
         },
         "fork": {
-            "title": "🐴 Тренажер Lichess: Коневые вилки",
+            "title": "🐴 Lichess: Коневые вилки",
             "url": "https://lichess.org/practice/basic-tactics/knight-fork/rZ6vT8cM"
         },
         "pin": {
-            "title": "🧲 Тренажер Lichess: Связки и рентгены",
+            "title": "🧲 Lichess: Связка и рентген",
             "url": "https://lichess.org/practice/basic-tactics/the-pin/B8b3Z7nK"
         },
         "endgame": {
-            "title": "♔ Тренажер Lichess: Практика эндшпиля",
+            "title": "♔ Lichess: Пешечный эндшпиль",
             "url": "https://lichess.org/practice/pawn-endgames/key-squares/E7x1Q0W9"
         }
     },
     "chesscom": {
         "undefended": {
-            "title": "⚡ Задачи Chess.com: Просчет и зевки",
-            "url": "https://www.chess.com/puzzles/rated"
+            "title": "⚡ Chess.com: Интерактивное решение задач",
+            "url": "https://www.chess.com/puzzles"
         },
         "back_rank": {
-            "title": "🧱 Задачи Chess.com: Матовые комбинации",
-            "url": "https://www.chess.com/puzzles/theme/back-rank"
+            "title": "🧱 Chess.com: Задачи на штурм короля",
+            "url": "https://www.chess.com/puzzles/rush"
         },
         "fork": {
-            "title": "🐴 Задачи Chess.com: Вилки и двойные удары",
-            "url": "https://www.chess.com/puzzles/theme/fork"
+            "title": "🐴 Chess.com: Тренировка видения доски и вилок",
+            "url": "https://www.chess.com/vision"
         },
         "pin": {
-            "title": "🧲 Задачи Chess.com: Связка (Pin)",
-            "url": "https://www.chess.com/puzzles/theme/pin"
+            "title": "🧲 Chess.com: Тактический тренажер",
+            "url": "https://www.chess.com/puzzles/rated"
         },
         "endgame": {
-            "title": "♔ Эндшпиль Chess.com: Тренировка окончаний",
-            "url": "https://www.chess.com/drills/endgame"
+            "title": "♔ Chess.com: Тренировка эндшпиля (Drills)",
+            "url": "https://www.chess.com/drills"
         }
     }
 }
@@ -131,7 +131,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
             "query": "как не делать зевки в шахматах"
         })
 
-    # 2. Безопасность короля и форточка
+    # 2. Безопасность короля
     for color, sqs in [(chess.WHITE, [chess.F1, chess.G1, chess.H1]), (chess.BLACK, [chess.F8, chess.G8, chess.H8])]:
         if board.king(color) in [chess.G1, chess.H1, chess.G8, chess.H8]:
             if sum(1 for sq in sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color)) == 3:
@@ -142,7 +142,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 })
                 break
 
-    # 3. Коневые вилки (Двойные удары)
+    # 3. Вилки
     has_fork_risk = False
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -159,7 +159,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
             "query": "коневая вилка двойной удар шахматы"
         })
 
-    # 4. Связка и рентген
+    # 4. Связка
     detected.append({
         "key": "pin",
         "topic": "🎯 **Связки и рентгены:** Защита фигур, стоящих на одной линии.",
@@ -266,6 +266,7 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
 @dp.message()
 async def analyze_player(message: types.Message):
     user_id = message.from_user.id
+    # Забираем актуальную платформу ПОЛЬЗОВАТЕЛЯ
     platform = get_user_setting(user_id, "platform", "chesscom")
     lang = get_user_setting(user_id, "lang", "ru")
     t = TEXTS.get(lang, TEXTS["ru"])
@@ -320,7 +321,7 @@ async def analyze_player(message: types.Message):
     if "endgame" not in trainer_keys:
         trainer_keys.append("endgame")
 
-    # Собираем ролики
+    # Поиск роликов на YouTube
     all_videos = []
     for q in yt_queries:
         vids = search_youtube_videos(q, lang=lang, max_results=2)
@@ -330,7 +331,7 @@ async def analyze_player(message: types.Message):
 
     all_videos = all_videos[:5]
 
-    # Текст сообщения
+    # Сборка финального отчета
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
     for issue in detected_issues:
@@ -343,9 +344,9 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Добавляем динамические ссылки под выбранную платформу
+    # Выборка ТРЕНАЖЕРОВ СТРОГО под платформу пользователя
     text += t["trainers_header"].format(platform=platform_name)
-    plat_trainers = TRAINER_DATABASE.get(platform, TRAINER_DATABASE["lichess"])
+    plat_trainers = TRAINER_DATABASE.get(platform, TRAINER_DATABASE["chesscom"])
     
     for key in trainer_keys:
         if key in plat_trainers:
