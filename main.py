@@ -18,12 +18,13 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+# Хранилище настроек пользователей
 user_settings = {}
 
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
-# Мультиязычные цитаты
+# Цитаты
 CHESS_QUOTES = {
     "ru": [
         "«Если видишь хороший ход — не спеши, поищи ход лучше.» — *Эмануил Ласкер*",
@@ -200,7 +201,9 @@ TRAINER_DATABASE = {
 }
 
 def get_user_setting(user_id: int, key: str, default: str):
-    return user_settings.get(user_id, {}).get(key, default)
+    if user_id not in user_settings:
+        user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
+    return user_settings[user_id].get(key, default)
 
 def set_user_setting(user_id: int, key: str, value: str):
     if user_id not in user_settings:
@@ -336,6 +339,7 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
     current_lang = get_user_setting(user_id, "lang", "ru")
     new_lang = LANG_NEXT.get(current_lang, "ru")
     set_user_setting(user_id, "lang", new_lang)
+    
     t = LANG_DATA.get(new_lang, LANG_DATA["ru"])
     await callback.message.edit_text(t["welcome"], reply_markup=get_settings_keyboard(user_id))
     await callback.answer()
@@ -343,12 +347,17 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
 @dp.message()
 async def analyze_player(message: types.Message):
     user_id = message.from_user.id
+    
+    # Жестко считываем текущие настройки пользователя
     platform = get_user_setting(user_id, "platform", "chesscom")
     lang = get_user_setting(user_id, "lang", "ru")
-    t = LANG_DATA.get(lang, LANG_DATA["ru"])
-    username = message.text.strip()
     
+    # Безопасное извлечение словаря для конкретного языка
+    t = LANG_DATA.get(lang, LANG_DATA["ru"])
+    
+    username = message.text.strip()
     platform_name = "Chess.com" if platform == "chesscom" else "Lichess"
+    
     await message.answer(t["analyzing"].format(username=username, platform=platform_name))
     
     games = await fetch_recent_games_async(username, platform, limit=10)
@@ -380,19 +389,22 @@ async def analyze_player(message: types.Message):
     if not detected_keys:
         detected_keys = ["undefended", "pin"]
 
-    # Ролики YouTube на нужном языке
+    # Ролики YouTube строго под язык
     all_videos = []
+    topics_dict = t.get("topics", LANG_DATA["ru"]["topics"])
+    
     for key in detected_keys:
-        yt_query = t["topics"][key]["yt"]
+        topic_info = topics_dict.get(key, topics_dict.get("undefended"))
+        yt_query = topic_info.get("yt", "chess tactics")
         vids = search_youtube_videos(yt_query, lang=lang, max_results=1)
         all_videos.extend(vids)
 
-    # Отчет
+    # Формируем отчет строго на нужном языке
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
     # 1. Пояснение проблем
     for key in detected_keys:
-        info = t["topics"][key]
+        info = topics_dict.get(key, topics_dict.get("undefended"))
         text += f"{info['topic']}\n\n"
 
     # 2. Видео-уроки
@@ -409,12 +421,13 @@ async def analyze_player(message: types.Message):
     for key in detected_keys:
         if key in plat_trainers:
             text += f"• {plat_trainers[key]}\n"
-    text += f"• {plat_trainers.get('endgame')}\n"
+    if "endgame" in plat_trainers:
+        text += f"• {plat_trainers['endgame']}\n"
 
     # 4. Задание на неделю
     text += t["weekly_task"]
     main_key = detected_keys[0]
-    task_desc = t["topics"][main_key]["task"]
+    task_desc = topics_dict.get(main_key, topics_dict.get("undefended"))["task"]
     text += f"👉 {task_desc}\n"
 
     # 5. Цитата в конце
