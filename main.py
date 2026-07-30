@@ -23,15 +23,14 @@ user_settings = {}
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
-# Цитаты гроссмейстеров
+# Мультиязычные цитаты
 CHESS_QUOTES = {
     "ru": [
         "«Если видишь хороший ход — не спеши, поищи ход лучше.» — *Эмануил Ласкер*",
         "«Самое трудное в шахматах — выиграть выигранную позицию.» — *Эмануил Ласкер*",
         "«Шахматы — это трагедия одного хода.» — *Савелий Тартаковер*",
         "«Учитесь играть эндшпиль. Дебют лишь показывает, как надо начинать, а эндшпиль — чем заканчивать.» — *Хосе Рауль Капабланка*",
-        "«Никто никогда не выигрывал партию, сдавшись.» — *Савелий Тартаковер*",
-        "«Шахматы не для слабонервных.» — *Вильгельм Стейниц*"
+        "«Никто никогда не выигрывал партию, сдавшись.» — *Савелий Тартаковер*"
     ],
     "en": [
         "\"When you see a good move, look for a better one.\" — *Emanuel Lasker*",
@@ -48,79 +47,155 @@ CHESS_QUOTES = {
     ]
 }
 
-TEXTS = {
+# Мультиязычный интерфейс и разборы ошибок
+LANG_DATA = {
     "ru": {
         "welcome": "👋 Привет! Я твой AI-тренер по шахматам.\n\nДавай настроим платформу и язык, а затем напиши мне свой **никнейм**, и я разберу твои последние партии!",
         "analyzing": "🧠 Так-так, посмотрим... Загружаю твои последние партии `{username}` с {platform}. Дай мне пару секунд, раскладу всё по полочкам!",
         "not_found": "❌ Слушай, я не смог найти игрока `{username}` на {platform}. Проверь, нет ли опечатки!",
-        "no_games": "📊 Никнейм `{username}` я нашел, но свежих партий у тебя пока нет. Сыграй пару каток и возвращайся!",
         "header": "📋 **РАЗБОР ТВОИХ ПАРТИЙ ОТ AI-ТРЕНЕРА ({count} игр)**\nИгрок: `{username}` ({platform})\n\nСлушай, я внимательно изучил твои последние игры. Вот что я заметил:\n\n",
         "plan_header": "\n🎬 **Видео для разбора (обязательно глянь на досуге):**\n",
         "trainers_header": "\n🧩 **Задание в приложении ({platform}):**\n",
         "weekly_task": "\n📝 **ТВОЁ ТРЕНЕРСКОЕ ЗАДАНИЕ НА ЭТУ НЕДЕЛЮ:**\n",
         "quote_header": "\n💡 **Мудрость недели:**\n",
         "no_videos": "*(Видео не подгрузились, но рекомендации ниже всё равно в силе!)*",
+        "topics": {
+            "undefended": {
+                "topic": "👀 **Зевки под прямой удар.** Ты периодически оставляешь фигуры без защиты или отдаешь их сопернику буквально в один ход.",
+                "task": "Перед каждым ходом задавай себе один простой вопрос: *«А куда теперь напал мой соперник?»*. Сделай паузу в 3–5 секунд перед тем, как отпустить фигуру.",
+                "yt": "как не делать зевки в шахматах"
+            },
+            "back_rank": {
+                "topic": "🚨 **Опасность на последней горизонтали.** Твой король любит сидеть в рокировке за пешками без «форточки». Чужая ладья залетает на 8-ю горизонталь — и конец.",
+                "task": "В миттельшпиле, как только позиции стабилизируются, сделай профилактический ход пешкой (`h3` или `g3`), чтобы дать королю воздуху.",
+                "yt": "мат по последней горизонтали форточка шахматы"
+            },
+            "fork": {
+                "topic": "🐴 **Коневые вилки.** Конь соперника ходит коварно, и ты регулярно пропускаешь двойные удары на короля и ценные фигуры.",
+                "task": "Помни: конь меняет цвет поля при каждом ходе! Если твои ценные фигуры стоят на полях одного цвета — конь может поставить им вилку.",
+                "yt": "коневая вилка двойной удар шахматы"
+            },
+            "pin": {
+                "topic": "🧲 **Пропуск связок.** Ты забываешь про фигуры, которые прикрывают короля или ферзя, и делаешь ими ход, из-за чего летит материал.",
+                "task": "Никогда не ходи связанной фигурой! Проверяй линии слонов и ладей противника перед тем, как сделать ход.",
+                "yt": "тактический прием связка рентген в шахматах"
+            }
+        }
     },
     "en": {
         "welcome": "👋 Hi! I am your AI chess coach.\n\nSet up your platform and language, then send me your **username** and let's review your recent games!",
         "analyzing": "🧠 Let's see... Fetching recent games for `{username}` from {platform}. Give me a few seconds to analyze!",
         "not_found": "❌ Couldn't find player `{username}` on {platform}. Double check the spelling!",
-        "no_games": "📊 Found player `{username}`, but there are no recent games. Play a few matches and come back!",
         "header": "📋 **AI COACH GAME REVIEW ({count} games)**\nPlayer: `{username}` ({platform})\n\nHere is what I noticed in your recent games:\n\n",
         "plan_header": "\n🎬 **Recommended Lessons:**\n",
         "trainers_header": "\n🧩 **Practice in ({platform}):**\n",
         "weekly_task": "\n📝 **YOUR COACHING TASK FOR THIS WEEK:**\n",
         "quote_header": "\n💡 **Quote of the Week:**\n",
         "no_videos": "*(Failed to load videos, but practice tasks remain active!)*",
+        "topics": {
+            "undefended": {
+                "topic": "👀 **Hanging Pieces.** You occasionally leave pieces undefended or give them away in a single move. Don't rush!",
+                "task": "Before every move, ask yourself one simple question: *'Where is my opponent attacking right now?'*. Pause for 3–5 seconds before moving.",
+                "yt": "how to stop hanging pieces chess"
+            },
+            "back_rank": {
+                "topic": "🚨 **Back-Rank Vulnerability.** Your king gets trapped behind its own pawns. An opponent's rook lands on the 8th rank — game over.",
+                "task": "In the middlegame, make a prophylactic pawn move (`h3` or `g3` / `h6` or `g6`) to give your king some breathing room.",
+                "yt": "back rank mate weakness chess"
+            },
+            "fork": {
+                "topic": "🐴 **Knight Forks.** Opposing knights are sneaky, and you frequently miss double attacks on your king and heavy pieces.",
+                "task": "Remember: a knight changes square color with every move! Keep your valuable pieces on different colored squares.",
+                "yt": "tactics knight fork chess lesson"
+            },
+            "pin": {
+                "topic": "🧲 **Missing Pins.** You tend to move pinned pieces that are shielding your king or queen, losing material as a result.",
+                "task": "Never move a pinned piece! Always check the lines of enemy bishops and rooks before executing your move.",
+                "yt": "pin tactics chess guide"
+            }
+        }
     },
     "pt": {
-        "welcome": "👋 Olá! Sou o teu treinador de xadrez com IA.\n\nConfigura a plataforma e o idioma, e depois envia o teu **nome de utilizador** para analisarmos as tuas partidas!",
+        "welcome": "👋 Olá! Sou o teu treinador de xadrez com IA.\n\nConfigura a plataforma e o idioma, e depois envia o teu **nome de utilizador**!",
         "analyzing": "🧠 Deixa ver... A descarregar partidas de `{username}` no {platform}. Dá-me uns segundos!",
         "not_found": "❌ Não encontrei o jogador `{username}` no {platform}. Confirma o nome!",
-        "no_games": "📊 Encontrei `{username}`, mas não há partidas recentes.",
         "header": "📋 **ANÁLISE DO TREINADOR IA ({count} partidas)**\nJogador: `{username}` ({platform})\n\nEis o que notei nas tuas partidas recentes:\n\n",
         "plan_header": "\n🎬 **Aulas Recomendadas:**\n",
         "trainers_header": "\n🧩 **Exercícios em ({platform}):**\n",
         "weekly_task": "\n📝 **A TUA TAREFA DA SEMANA:**\n",
         "quote_header": "\n💡 **Citação da Semana:**\n",
         "no_videos": "*(Vídeos indisponíveis)*",
+        "topics": {
+            "undefended": {
+                "topic": "👀 **Peças Penduradas.** Às vezes deixas peças sem defesa ou dás de bandeja num só lance.",
+                "task": "Antes de cada lance, faz uma pergunta simples: *'Para onde está a atacar o meu adversário?'*. Faz uma pausa de 3 a 5 segundos.",
+                "yt": "como nao pendurar pecas xadrez"
+            },
+            "back_rank": {
+                "topic": "🚨 **Mate na Última Fileira.** O teu rei fica preso atrás dos próprios peões. Uma torre inimiga entra na 8ª fileira e é o fim.",
+                "task": "No meio-jogo, faz um lance preventivo de peão (`h3` ou `g3`) para dar ar ao teu rei.",
+                "yt": "mate da ultima fileira xadrez"
+            },
+            "fork": {
+                "topic": "🐴 **Garfos de Cavalo.** O cavalo inimigo é traiçoeiro e estás a perder duplos ataques no rei e em peças valiosas.",
+                "task": "Lembra-te: o cavalo muda a cor da casa a cada lance! Mantém as tuas peças valiosas em casas de cores diferentes.",
+                "yt": "garfo de cavalo ataque duplo xadrez"
+            },
+            "pin": {
+                "topic": "🧲 **Esquecimento de Cravagens.** Estás a mover peças cravadas que protegem o teu rei ou rainha.",
+                "task": "Nunca movas uma peça cravada! Verifica as linhas de bispos e torres inimigas antes de jogar.",
+                "yt": "tactica cravagem xadrez"
+            }
+        }
     }
 }
 
 TRAINER_DATABASE = {
     "lichess": {
-        "undefended": "⚡ **Зевки:** Зайди в `Обучение` ➔ `Практика` ➔ модуль **«Hanging pieces»**.",
-        "back_rank": "🧱 **Мат по 8-й:** Открой `Задачи` ➔ `Темы задач` ➔ **«Мат на последней горизонтали»**.",
-        "fork": "🐴 **Вилки:** Открой `Обучение` ➔ `Практика` ➔ модуль **«Knight Fork»**.",
-        "pin": "🧲 **Связки:** Зайди в `Обучение` ➔ `Практика` ➔ модуль **«The Pin»**.",
-        "endgame": "♔ **Эндшпиль:** Открой `Обучение` ➔ `Практика` ➔ **«Пешечные окончания»**."
+        "ru": {
+            "undefended": "⚡ **Зевки:** Зайди в `Обучение` ➔ `Практика` ➔ модуль **«Hanging pieces»**.",
+            "back_rank": "🧱 **Мат по 8-й:** Открой `Задачи` ➔ `Темы задач` ➔ **«Мат на последней горизонтали»**.",
+            "fork": "🐴 **Вилки:** Открой `Обучение` ➔ `Практика` ➔ модуль **«Knight Fork»**.",
+            "pin": "🧲 **Связки:** Зайди в `Обучение` ➔ `Практика` ➔ модуль **«The Pin»**.",
+            "endgame": "♔ **Эндшпиль:** Открой `Обучение` ➔ `Практика` ➔ **«Пешечные окончания»**."
+        },
+        "en": {
+            "undefended": "⚡ **Hanging pieces:** Go to `Learn` ➔ `Practice` ➔ **«Hanging pieces»** module.",
+            "back_rank": "🧱 **Back Rank:** Go to `Puzzles` ➔ `Puzzle Themes` ➔ **«Back Rank Mate»**.",
+            "fork": "🐴 **Forks:** Go to `Learn` ➔ `Practice` ➔ **«Knight Fork»**.",
+            "pin": "🧲 **Pins:** Go to `Learn` ➔ `Practice` ➔ **«The Pin»**.",
+            "endgame": "♔ **Endgame:** Go to `Learn` ➔ `Practice` ➔ **«Pawn Endgames»**."
+        },
+        "pt": {
+            "undefended": "⚡ **Peças penduradas:** Vai a `Aprender` ➔ `Prática` ➔ **«Hanging pieces»**.",
+            "back_rank": "🧱 **Mate na 8ª:** Vai a `Exercícios` ➔ `Temas` ➔ **«Mate na última fileira»**.",
+            "fork": "🐴 **Garfos:** Vai a `Aprender` ➔ `Prática` ➔ **«Knight Fork»**.",
+            "pin": "🧲 **Cravagens:** Vai a `Aprender` ➔ `Prática` ➔ **«The Pin»**.",
+            "endgame": "♔ **Final:** Vai a `Aprender` ➔ `Prática` ➔ **«Finais de Peões»**."
+        }
     },
     "chesscom": {
-        "undefended": "⚡ **Зевки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбор темы **«Незащищенная фигура»**.",
-        "back_rank": "🧱 **Мат по 8-й:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ тема **«Слабость последней горизонтали»**.",
-        "fork": "🐴 **Вилки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ тема **«Двойной удар / Вилка»**.",
-        "pin": "🧲 **Связки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ тема **«Связка (Pin)»**.",
-        "endgame": "♔ **Эндшпиль:** Зайди в `Обучение` ➔ `Тренировка (Drills)` ➔ пройди **Пешечные окончания**."
-    }
-}
-
-# Человечные разборы проблем
-HUMAN_DESCRIPTIONS = {
-    "undefended": {
-        "topic": "👀 **Зевки под прямой удар.** Ты периодически оставляешь фигуры без защиты или отдаешь их сопернику буквально в один ход. Главная беда любителей — спешка.",
-        "task": "Перед каждым ходом задавай себе один простой вопрос: *«А куда теперь напал мой соперник?»*. Сделай паузу в 3–5 секунд перед тем, как отпустить фигуру."
-    },
-    "back_rank": {
-        "topic": "🚨 **Опасность на последней горизонтали.** Твой король любит сидеть в рокировке за пешками без «форточки». Чужая ладья залетает на 8-ю горизонталь — и приехали.",
-        "task": "В миттельшпиле (в середине игры), как только позиции стабилизируются, сделай профилактический ход пешкой (`h3` или `g3`), чтобы дать королю воздуху."
-    },
-    "fork": {
-        "topic": "🐴 **Коневые вилки.** Конь соперника ходит коварно, и ты регулярно пропускаешь двойные удары на короля и ладью/ферзя.",
-        "task": "Помни: конь меняет цвет поля при каждом ходе! Если твои ценные фигуры стоят на полях одного цвета — конь может поставить им вилку за один ход. Следи за этим."
-    },
-    "pin": {
-        "topic": "🧲 **Пропуск связок.** Ты забываешь про фигуры, которые прикрывают короля или ферзя, и делаешь ими ход, из-за чего летит материал.",
-        "task": "Никогда не ходи связанной фигурой! Проверяй линии слонов и ладей противника перед тем, как поднять фигуру."
+        "ru": {
+            "undefended": "⚡ **Зевки:** `Задачи` ➔ `Настраиваемые задачи` ➔ **«Незащищенная фигура»**.",
+            "back_rank": "🧱 **Мат по 8-й:** `Задачи` ➔ `Настраиваемые задачи` ➔ **«Слабость последней горизонтали»**.",
+            "fork": "🐴 **Вилки:** `Задачи` ➔ `Настраиваемые задачи` ➔ **«Двойной удар / Вилка»**.",
+            "pin": "🧲 **Связки:** `Задачи` ➔ `Настраиваемые задачи` ➔ **«Связка (Pin)»**.",
+            "endgame": "♔ **Эндшпиль:** `Обучение` ➔ `Тренировка (Drills)` ➔ **Пешечные окончания**."
+        },
+        "en": {
+            "undefended": "⚡ **Hanging pieces:** `Puzzles` ➔ `Custom Puzzles` ➔ **«Hanging Piece»**.",
+            "back_rank": "🧱 **Back Rank:** `Puzzles` ➔ `Custom Puzzles` ➔ **«Back-Rank Mate»**.",
+            "fork": "🐴 **Forks:** `Puzzles` ➔ `Custom Puzzles` ➔ **«Fork / Double Attack»**.",
+            "pin": "🧲 **Pins:** `Puzzles` ➔ `Custom Puzzles` ➔ **«Pin»**.",
+            "endgame": "♔ **Endgame:** `Learn` ➔ `Drills` ➔ **Pawn Endgames**."
+        },
+        "pt": {
+            "undefended": "⚡ **Peças penduradas:** `Exercícios` ➔ `Personalizados` ➔ **«Peça Pendurada»**.",
+            "back_rank": "🧱 **Mate na 8ª:** `Exercícios` ➔ `Personalizados` ➔ **«Mate na Última Fileira»**.",
+            "fork": "🐴 **Garfos:** `Exercícios` ➔ `Personalizados` ➔ **«Garfo / Duplo»**.",
+            "pin": "🧲 **Cravagens:** `Exercícios` ➔ `Personalizados` ➔ **«Cravagem»**.",
+            "endgame": "♔ **Final:** `Aprender` ➔ `Treino (Drills)` ➔ **Finais de Peões**."
+        }
     }
 }
 
@@ -143,19 +218,13 @@ def analyze_board_concepts(board: chess.Board) -> list:
             if board.is_attacked_by(not p.color, sq) and not board.is_attacked_by(p.color, sq):
                 undefended += 1
     if undefended >= 1:
-        detected.append({
-            "key": "undefended",
-            "query": "как не делать зевки в шахматах"
-        })
+        detected.append("undefended")
 
     # 2. Безопасность короля
     for color, sqs in [(chess.WHITE, [chess.F1, chess.G1, chess.H1]), (chess.BLACK, [chess.F8, chess.G8, chess.H8])]:
         if board.king(color) in [chess.G1, chess.H1, chess.G8, chess.H8]:
             if sum(1 for sq in sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color)) == 3:
-                detected.append({
-                    "key": "back_rank",
-                    "query": "мат по последней горизонтали форточка шахматы"
-                })
+                detected.append("back_rank")
                 break
 
     # 3. Коневые вилки
@@ -169,16 +238,10 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 has_fork_risk = True
                 break
     if has_fork_risk:
-        detected.append({
-            "key": "fork",
-            "query": "коневая вилка двойной удар шахматы"
-        })
+        detected.append("fork")
 
     # 4. Связка
-    detected.append({
-        "key": "pin",
-        "query": "тактический прием связка рентген в шахматах"
-    })
+    detected.append("pin")
 
     return detected
 
@@ -255,7 +318,7 @@ def get_settings_keyboard(user_id: int):
 async def start_cmd(message: types.Message):
     user_id = message.from_user.id
     lang = get_user_setting(user_id, "lang", "ru")
-    t = TEXTS.get(lang, TEXTS["ru"])
+    t = LANG_DATA.get(lang, LANG_DATA["ru"])
     await message.answer(t["welcome"], reply_markup=get_settings_keyboard(user_id))
 
 @dp.callback_query(F.data == "toggle_platform")
@@ -273,7 +336,7 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
     current_lang = get_user_setting(user_id, "lang", "ru")
     new_lang = LANG_NEXT.get(current_lang, "ru")
     set_user_setting(user_id, "lang", new_lang)
-    t = TEXTS.get(new_lang, TEXTS["ru"])
+    t = LANG_DATA.get(new_lang, LANG_DATA["ru"])
     await callback.message.edit_text(t["welcome"], reply_markup=get_settings_keyboard(user_id))
     await callback.answer()
 
@@ -282,7 +345,7 @@ async def analyze_player(message: types.Message):
     user_id = message.from_user.id
     platform = get_user_setting(user_id, "platform", "chesscom")
     lang = get_user_setting(user_id, "lang", "ru")
-    t = TEXTS.get(lang, TEXTS["ru"])
+    t = LANG_DATA.get(lang, LANG_DATA["ru"])
     username = message.text.strip()
     
     platform_name = "Chess.com" if platform == "chesscom" else "Lichess"
@@ -295,7 +358,6 @@ async def analyze_player(message: types.Message):
         return
 
     detected_keys = []
-    yt_queries = []
 
     for game in games:
         pgn_text = game.get("pgn", "")
@@ -309,30 +371,28 @@ async def analyze_player(message: types.Message):
                         board.push(m)
                     
                     concepts = analyze_board_concepts(board)
-                    for item in concepts:
-                        if item["key"] not in detected_keys:
-                            detected_keys.append(item["key"])
-                            yt_queries.append(item["query"])
+                    for key in concepts:
+                        if key not in detected_keys:
+                            detected_keys.append(key)
 
     detected_keys = detected_keys[:2]
-    yt_queries = yt_queries[:2]
 
     if not detected_keys:
         detected_keys = ["undefended", "pin"]
-        yt_queries = ["как не делать зевки в шахматах", "тактический прием связка рентген в шахматах"]
 
-    # Ролики YouTube
+    # Ролики YouTube на нужном языке
     all_videos = []
-    for q in yt_queries:
-        vids = search_youtube_videos(q, lang=lang, max_results=1)
+    for key in detected_keys:
+        yt_query = t["topics"][key]["yt"]
+        vids = search_youtube_videos(yt_query, lang=lang, max_results=1)
         all_videos.extend(vids)
 
-    # Формируем человечный отчет
+    # Отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
-    # 1. Пояснение проблем живым языком
+    # 1. Пояснение проблем
     for key in detected_keys:
-        info = HUMAN_DESCRIPTIONS.get(key, HUMAN_DESCRIPTIONS["undefended"])
+        info = t["topics"][key]
         text += f"{info['topic']}\n\n"
 
     # 2. Видео-уроки
@@ -345,7 +405,7 @@ async def analyze_player(message: types.Message):
 
     # 3. Инструкции по тренировкам
     text += t["trainers_header"].format(platform=platform_name)
-    plat_trainers = TRAINER_DATABASE.get(platform, TRAINER_DATABASE["chesscom"])
+    plat_trainers = TRAINER_DATABASE.get(platform, {}).get(lang, TRAINER_DATABASE["chesscom"]["ru"])
     for key in detected_keys:
         if key in plat_trainers:
             text += f"• {plat_trainers[key]}\n"
@@ -354,7 +414,7 @@ async def analyze_player(message: types.Message):
     # 4. Задание на неделю
     text += t["weekly_task"]
     main_key = detected_keys[0]
-    task_desc = HUMAN_DESCRIPTIONS.get(main_key, HUMAN_DESCRIPTIONS["undefended"])["task"]
+    task_desc = t["topics"][main_key]["task"]
     text += f"👉 {task_desc}\n"
 
     # 5. Цитата в конце
