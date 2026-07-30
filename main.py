@@ -6,6 +6,7 @@ import chess.pgn
 import io
 import json
 import random
+from collections import defaultdict
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -18,13 +19,11 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Хранилище настроек пользователей
 user_settings = {}
 
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
-# Цитаты
 CHESS_QUOTES = {
     "ru": [
         "«Если видишь хороший ход — не спеши, поищи ход лучше.» — *Эмануил Ласкер*",
@@ -48,13 +47,15 @@ CHESS_QUOTES = {
     ]
 }
 
-# Мультиязычный интерфейс и разборы ошибок
 LANG_DATA = {
     "ru": {
         "welcome": "👋 Привет! Я твой AI-тренер по шахматам.\n\nДавай настроим платформу и язык, а затем напиши мне свой **никнейм**, и я разберу твои последние партии!",
         "analyzing": "🧠 Так-так, посмотрим... Загружаю твои последние партии `{username}` с {platform}. Дай мне пару секунд, раскладу всё по полочкам!",
         "not_found": "❌ Слушай, я не смог найти игрока `{username}` на {platform}. Проверь, нет ли опечатки!",
         "header": "📋 **РАЗБОР ТВОИХ ПАРТИЙ ОТ AI-ТРЕНЕРА ({count} игр)**\nИгрок: `{username}` ({platform})\n\nСлушай, я внимательно изучил твои последние игры. Вот что я заметил:\n\n",
+        "opening_header": "📖 **ТВОЙ ДЕБЮТНЫЙ РЕПЕРТУАР:**\n",
+        "best_opening": "🟢 **Твой лучший дебют:** {opening} (Побед: {winrate}%)\n",
+        "worst_opening": "🔴 **Проблемный дебют:** {opening} (Побед: {winrate}%)\n👉 *Тренерская рекомендация:* Посмотри теории по этому дебюту, ты теряешь в нем много очков!\n\n",
         "plan_header": "\n🎬 **Видео для разбора (обязательно глянь на досуге):**\n",
         "trainers_header": "\n🧩 **Задание в приложении ({platform}):**\n",
         "weekly_task": "\n📝 **ТВОЁ ТРЕНЕРСКОЕ ЗАДАНИЕ НА ЭТУ НЕДЕЛЮ:**\n",
@@ -88,6 +89,9 @@ LANG_DATA = {
         "analyzing": "🧠 Let's see... Fetching recent games for `{username}` from {platform}. Give me a few seconds to analyze!",
         "not_found": "❌ Couldn't find player `{username}` on {platform}. Double check the spelling!",
         "header": "📋 **AI COACH GAME REVIEW ({count} games)**\nPlayer: `{username}` ({platform})\n\nHere is what I noticed in your recent games:\n\n",
+        "opening_header": "📖 **YOUR OPENING REPERTOIRE:**\n",
+        "best_opening": "🟢 **Best opening:** {opening} (Winrate: {winrate}%)\n",
+        "worst_opening": "🔴 **Trouble opening:** {opening} (Winrate: {winrate}%)\n👉 *Coach Advice:* Study some theory for this opening, you are dropping points here!\n\n",
         "plan_header": "\n🎬 **Recommended Lessons:**\n",
         "trainers_header": "\n🧩 **Practice in ({platform}):**\n",
         "weekly_task": "\n📝 **YOUR COACHING TASK FOR THIS WEEK:**\n",
@@ -121,6 +125,9 @@ LANG_DATA = {
         "analyzing": "🧠 Deixa ver... A descarregar partidas de `{username}` no {platform}. Dá-me uns segundos!",
         "not_found": "❌ Não encontrei o jogador `{username}` no {platform}. Confirma o nome!",
         "header": "📋 **ANÁLISE DO TREINADOR IA ({count} partidas)**\nJogador: `{username}` ({platform})\n\nEis o que notei nas tuas partidas recentes:\n\n",
+        "opening_header": "📖 **O TEU REPERTÓRIO DE ABERTURA:**\n",
+        "best_opening": "🟢 **Melhor abertura:** {opening} (Vitórias: {winrate}%)\n",
+        "worst_opening": "🔴 **Abertura problemática:** {opening} (Vitórias: {winrate}%)\n👉 *Conselho do Treinador:* Estuda a teoria desta abertura, estás a perder pontos aqui!\n\n",
         "plan_header": "\n🎬 **Aulas Recomendadas:**\n",
         "trainers_header": "\n🧩 **Exercícios em ({platform}):**\n",
         "weekly_task": "\n📝 **A TUA TAREFA DA SEMANA:**\n",
@@ -213,7 +220,6 @@ def set_user_setting(user_id: int, key: str, value: str):
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
 
-    # 1. Зависающие фигуры
     undefended = 0
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -223,14 +229,12 @@ def analyze_board_concepts(board: chess.Board) -> list:
     if undefended >= 1:
         detected.append("undefended")
 
-    # 2. Безопасность короля
     for color, sqs in [(chess.WHITE, [chess.F1, chess.G1, chess.H1]), (chess.BLACK, [chess.F8, chess.G8, chess.H8])]:
         if board.king(color) in [chess.G1, chess.H1, chess.G8, chess.H8]:
             if sum(1 for sq in sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color)) == 3:
                 detected.append("back_rank")
                 break
 
-    # 3. Коневые вилки
     has_fork_risk = False
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -243,12 +247,10 @@ def analyze_board_concepts(board: chess.Board) -> list:
     if has_fork_risk:
         detected.append("fork")
 
-    # 4. Связка
     detected.append("pin")
-
     return detected
 
-async def fetch_recent_games_async(username: str, platform: str, limit: int = 10) -> list:
+async def fetch_recent_games_async(username: str, platform: str, limit: int = 15) -> list:
     headers = {'User-Agent': 'ChessCoachBot/1.0'}
     games = []
     timeout = aiohttp.ClientTimeout(total=5)
@@ -347,12 +349,8 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
 @dp.message()
 async def analyze_player(message: types.Message):
     user_id = message.from_user.id
-    
-    # Жестко считываем текущие настройки пользователя
     platform = get_user_setting(user_id, "platform", "chesscom")
     lang = get_user_setting(user_id, "lang", "ru")
-    
-    # Безопасное извлечение словаря для конкретного языка
     t = LANG_DATA.get(lang, LANG_DATA["ru"])
     
     username = message.text.strip()
@@ -360,19 +358,39 @@ async def analyze_player(message: types.Message):
     
     await message.answer(t["analyzing"].format(username=username, platform=platform_name))
     
-    games = await fetch_recent_games_async(username, platform, limit=10)
+    games = await fetch_recent_games_async(username, platform, limit=15)
     
     if not games:
         await message.answer(t["not_found"].format(username=username, platform=platform_name), reply_markup=get_settings_keyboard(user_id))
         return
 
     detected_keys = []
+    openings_stats = defaultdict(lambda: {"total": 0, "wins": 0})
 
     for game in games:
         pgn_text = game.get("pgn", "")
         if pgn_text:
             pgn = chess.pgn.read_game(io.StringIO(pgn_text))
             if pgn:
+                # Анализ Дебютов
+                opening_name = pgn.headers.get("Opening", "Unknown Opening")
+                # Убираем лишнюю детализацию подвариантов для простоты
+                clean_opening = opening_name.split(":")[0].split(",")[0].strip()
+                
+                # Проверяем результат
+                white_player = pgn.headers.get("White", "").lower()
+                black_player = pgn.headers.get("Black", "").lower()
+                result = pgn.headers.get("Result", "*")
+                
+                user_is_white = username.lower() in white_player
+                is_win = (user_is_white and result == "1-0") or (not user_is_white and result == "0-1")
+                
+                if clean_opening != "Unknown Opening":
+                    openings_stats[clean_opening]["total"] += 1
+                    if is_win:
+                        openings_stats[clean_opening]["wins"] += 1
+
+                # Анализ Тактики
                 moves = list(pgn.mainline_moves())
                 if len(moves) > 10:
                     board = pgn.board()
@@ -385,11 +403,10 @@ async def analyze_player(message: types.Message):
                             detected_keys.append(key)
 
     detected_keys = detected_keys[:2]
-
     if not detected_keys:
         detected_keys = ["undefended", "pin"]
 
-    # Ролики YouTube строго под язык
+    # Ролики YouTube
     all_videos = []
     topics_dict = t.get("topics", LANG_DATA["ru"]["topics"])
     
@@ -399,15 +416,37 @@ async def analyze_player(message: types.Message):
         vids = search_youtube_videos(yt_query, lang=lang, max_results=1)
         all_videos.extend(vids)
 
-    # Формируем отчет строго на нужном языке
+    # Формируем отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
-    # 1. Пояснение проблем
+    # 1. Блок Анализа Дебютов
+    if openings_stats:
+        text += t["opening_header"]
+        
+        # Находим лучший и худший дебют
+        sorted_openings = sorted(
+            openings_stats.items(), 
+            key=lambda item: (item[1]["wins"] / item[1]["total"]), 
+            reverse=True
+        )
+        
+        best = sorted_openings[0]
+        best_winrate = int((best[1]["wins"] / best[1]["total"]) * 100)
+        text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
+        
+        if len(sorted_openings) > 1:
+            worst = sorted_openings[-1]
+            worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100)
+            text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
+        else:
+            text += "\n"
+
+    # 2. Пояснение тактических проблем
     for key in detected_keys:
         info = topics_dict.get(key, topics_dict.get("undefended"))
         text += f"{info['topic']}\n\n"
 
-    # 2. Видео-уроки
+    # 3. Видео-уроки
     text += t["plan_header"]
     if all_videos:
         for idx, vid in enumerate(all_videos, 1):
@@ -415,7 +454,7 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # 3. Инструкции по тренировкам
+    # 4. Инструкции по тренировкам
     text += t["trainers_header"].format(platform=platform_name)
     plat_trainers = TRAINER_DATABASE.get(platform, {}).get(lang, TRAINER_DATABASE["chesscom"]["ru"])
     for key in detected_keys:
@@ -424,13 +463,13 @@ async def analyze_player(message: types.Message):
     if "endgame" in plat_trainers:
         text += f"• {plat_trainers['endgame']}\n"
 
-    # 4. Задание на неделю
+    # 5. Задание на неделю
     text += t["weekly_task"]
     main_key = detected_keys[0]
     task_desc = topics_dict.get(main_key, topics_dict.get("undefended"))["task"]
     text += f"👉 {task_desc}\n"
 
-    # 5. Цитата в конце
+    # 6. Цитата
     quotes_list = CHESS_QUOTES.get(lang, CHESS_QUOTES["ru"])
     random_quote = random.choice(quotes_list)
     text += t["quote_header"]
