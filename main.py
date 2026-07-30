@@ -4,6 +4,7 @@ import aiohttp
 import chess
 import chess.pgn
 import io
+import json
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -29,7 +30,7 @@ TEXTS = {
         "no_games": "📊 Игрок **{username}** найден, но у него нет сыгранных партий.",
         "header": "📊 **КОНКРЕТНЫЙ AI-АНАЛИЗ ОШИБОК ({count} ПАРТИЙ)**\nИгрок: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Выявленные точечные проблемы и темы для проработки:**\n",
-        "plan_header": "\n🎬 **Рекомендованные уроки по твоим слабым темам:**\n",
+        "plan_header": "\n🎬 **Рекомендованные видео-уроки по твоим темам:**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
     },
     "en": {
@@ -39,7 +40,7 @@ TEXTS = {
         "no_games": "📊 Player **{username}** found, but has no recent games.",
         "header": "📊 **SPECIFIC AI ERROR ANALYSIS ({count} GAMES)**\nPlayer: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Identified Specific Topics to Improve:**\n",
-        "plan_header": "\n🎬 **Recommended Video Lessons on Your Weak Topics:**\n",
+        "plan_header": "\n🎬 **Recommended Video Lessons for You:**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
     },
     "pt": {
@@ -62,10 +63,11 @@ def set_user_setting(user_id: int, key: str, value: str):
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
 
+# --- ДЕТЕКТОР ОШИБОК ---
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
 
-    # 1. Зависающие фигуры / Зевы
+    # 1. Зависающие фигуры / Зевки
     undefended = 0
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -74,11 +76,11 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 undefended += 1
     if undefended >= 1:
         detected.append({
-            "topic": "🎯 **Зависающие фигуры:** Оставление фигур под ударом без защиты.",
-            "query": "как не зевать фигуры в шахматах"
+            "topic": "🎯 **Зависающие фигуры:** Оставление фигур под ударом без защиты (зевки).",
+            "query": "как не делать зевки в шахматах"
         })
 
-    # 2. Безопасность короля
+    # 2. Безопасность короля и форточка
     for color, sqs in [(chess.WHITE, [chess.F1, chess.G1, chess.H1]), (chess.BLACK, [chess.F8, chess.G8, chess.H8])]:
         if board.king(color) in [chess.G1, chess.H1, chess.G8, chess.H8]:
             if sum(1 for sq in sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color)) == 3:
@@ -88,7 +90,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 })
                 break
 
-    # 3. Коневые вилки
+    # 3. Коневые вилки (Двойные удары)
     has_fork_risk = False
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -100,13 +102,13 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 break
     if has_fork_risk:
         detected.append({
-            "topic": "🎯 **Коневые вилки и двойные удары:** Пропуск тактических нападений конем.",
+            "topic": "🎯 **Коневые вилки:** Пропуск двойных ударов конем.",
             "query": "коневая вилка двойной удар шахматы"
         })
 
     # 4. Связка и рентген
     detected.append({
-        "topic": "🎯 **Связка и рентген:** Пропуск линейных атак на фигуру за фигурой.",
+        "topic": "🎯 **Связки и рентгены:** Защита фигур, стоящих на одной линии.",
         "query": "тактический прием связка рентген в шахматах"
     })
 
@@ -130,7 +132,7 @@ async def fetch_recent_games_async(username: str, platform: str, limit: int = 10
                                 if g_res.status == 200:
                                     g_data = await g_res.json()
                                     games = g_data.get("games", [])[-limit:]
-            else:
+            else: # Lichess
                 url = f"https://lichess.org/api/games/user/{username}?max={limit}&pgnInBody=true"
                 headers_lic = {'Accept': 'application/x-ndjson'}
                 async with session.get(url, headers=headers_lic) as res:
@@ -138,34 +140,35 @@ async def fetch_recent_games_async(username: str, platform: str, limit: int = 10
                         text = await res.text()
                         for line in text.strip().split('\n'):
                             if line:
-                                import json
                                 games.append(json.loads(line))
     except Exception as e:
         print(f"Ошибка асинхронной загрузки партий: {e}")
         
     return games
 
-def search_youtube_videos(query_topic: str, lang: str = "ru") -> list:
+# --- ПОИСК ВИДЕО НА YOUTUBE ---
+def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 2) -> list:
     if not YOUTUBE_API_KEY:
         return []
+    videos = []
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
         request = youtube.search().list(
             q=query_topic,
             part="snippet",
-            maxResults=1,
+            maxResults=max_results,
             type="video",
             relevanceLanguage=lang
         )
         response = request.execute()
         for item in response.get("items", []):
-            return [{
+            videos.append({
                 "title": item["snippet"]["title"],
                 "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}"
-            }]
+            })
     except Exception as e:
         print(f"Ошибка YouTube API: {e}")
-    return []
+    return videos
 
 def get_settings_keyboard(user_id: int):
     platform = get_user_setting(user_id, "platform", "chesscom")
@@ -244,17 +247,31 @@ async def analyze_player(message: types.Message):
                             detected_issues.append(item["topic"])
                             yt_queries.append(item["query"])
 
+    # Ограничиваем список до 3 ключевых тем
     detected_issues = detected_issues[:3]
     yt_queries = yt_queries[:3]
 
+    # Запасной вариант при отсутствии явных проблем
     if not detected_issues:
-        detected_issues = ["🎯 **Расчет вариантов:** Точность и предупреждение зевов."]
-        yt_queries = ["как не зевать фигуры в шахматах"]
+        detected_issues = [
+            "🎯 **Расчет вариантов:** Предупреждение зевков и точный выбор ходов.",
+            "🎯 **Связки и рентгены:** Защита фигур, стоящих на одной линии."
+        ]
+        yt_queries = [
+            "как не делать зевки в шахматах",
+            "тактический прием связка рентген в шахматах"
+        ]
 
+    # Собираем от 3 до 5 видеоуроков (по 2 видео на тему)
     all_videos = []
     for q in yt_queries:
-        vids = search_youtube_videos(q, lang=lang)
-        all_videos.extend(vids)
+        vids = search_youtube_videos(q, lang=lang, max_results=2)
+        for v in vids:
+            if not any(existing['url'] == v['url'] for existing in all_videos):
+                all_videos.append(v)
+
+    # Итоговая выдача 3–5 роликов
+    all_videos = all_videos[:5]
 
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
