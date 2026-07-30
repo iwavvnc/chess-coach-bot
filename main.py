@@ -24,22 +24,21 @@ user_settings = {}
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
-# Базовая база дебютов по первым ходам
 OPENING_PATTERNS = {
-    "e4 e5 Nf3 Nc6 Bc4": "Итальянская партия (Italian Game)",
-    "e4 e5 Nf3 Nc6 Bb5": "Испанская партия (Ruy Lopez)",
-    "e4 c5": "Сицилианская защита (Sicilian Defense)",
-    "e4 e6": "Французская защита (French Defense)",
-    "e4 c6": "Защита Каро-Канн (Caro-Kann Defense)",
-    "d4 d5 c4": "Ферзевый гамбит (Queen's Gambit)",
-    "d4 Nf6 c4 g6": "Староиндийская защита (King's Indian Defense)",
+    "e4 e5 Nf3 Nc6 Bc4": "Итальянская партия",
+    "e4 e5 Nf3 Nc6 Bb5": "Испанская партия",
+    "e4 c5": "Сицилианская защита",
+    "e4 e6": "Французская защита",
+    "e4 c6": "Защита Каро-Канн",
+    "d4 d5 c4": "Ферзевый гамбит",
+    "d4 Nf6 c4 g6": "Староиндийская защита",
     "d4 Nf6 c4 e6": "Защита Нимцовича / Новоиндийская",
-    "e4 e5 Nf3 Nf6": "Русская партия (Petrov Defense)",
-    "e4 d5": "Скандинавская защита (Scandinavian Defense)",
-    "c4": "Английское начало (English Opening)",
-    "Nf3": "Дебют Рети (Réti Opening)",
-    "d4 d5": "Дебют ферзевых пешек (Queen's Pawn Game)",
-    "e4 e5": "Открытый дебют (Open Game)"
+    "e4 e5 Nf3 Nf6": "Русская партия",
+    "e4 d5": "Скандинавская защита",
+    "c4": "Английское начало",
+    "Nf3": "Дебют Рети",
+    "d4 d5": "Дебют ферзевых пешек",
+    "e4 e5": "Открытый дебют"
 }
 
 CHESS_QUOTES = {
@@ -238,25 +237,38 @@ def set_user_setting(user_id: int, key: str, value: str):
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
 
-def detect_opening_from_moves(game) -> str:
-    # 1. Попытка считать напрямую из тега PGN
-    opening_tag = game.headers.get("Opening", "")
-    if opening_tag and opening_tag != "?":
-        return opening_tag.split(":")[0].split(",")[0].strip()
-        
-    # 2. Если тега нет — определяем по первым ходам
-    board = game.board()
-    moves_san = []
-    for move in list(game.mainline_moves())[:6]:
-        moves_san.append(board.san(move))
-        board.push(move)
-    
-    moves_str = " ".join(moves_san)
-    for pattern, name in OPENING_PATTERNS.items():
-        if moves_str.startswith(pattern):
-            return name
-            
-    return "Другой дебют / Нестандартное начало"
+def extract_opening_name(pgn_obj, game_raw, platform) -> str:
+    # 1. Считываем из PGN заголовков
+    if pgn_obj:
+        opening_tag = pgn_obj.headers.get("Opening", "")
+        if opening_tag and opening_tag != "?":
+            return opening_tag.split(":")[0].split(",")[0].strip()
+
+    # 2. Попытка взять из JSON Chess.com / Lichess напрямую
+    if platform == "chesscom":
+        eco_url = game_raw.get("eco", "")
+        if eco_url:
+            parts = eco_url.split("/")
+            if parts:
+                return parts[-1].replace("-", " ").title()
+    elif platform == "lichess":
+        opening_json = game_raw.get("opening", {}).get("name", "")
+        if opening_json:
+            return opening_json.split(":")[0].split(",")[0].strip()
+
+    # 3. Резерв по первому ходу
+    if pgn_obj:
+        board = pgn_obj.board()
+        moves_san = []
+        for move in list(pgn_obj.mainline_moves())[:6]:
+            moves_san.append(board.san(move))
+            board.push(move)
+        moves_str = " ".join(moves_san)
+        for pattern, name in OPENING_PATTERNS.items():
+            if moves_str.startswith(pattern):
+                return name
+
+    return "Дебют e4 / d4"
 
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
@@ -294,7 +306,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
 async def fetch_recent_games_async(username: str, platform: str, limit: int = 15) -> list:
     headers = {'User-Agent': 'ChessCoachBot/1.0'}
     games = []
-    timeout = aiohttp.ClientTimeout(total=5)
+    timeout = aiohttp.ClientTimeout(total=8)
     
     try:
         async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
@@ -310,7 +322,7 @@ async def fetch_recent_games_async(username: str, platform: str, limit: int = 15
                                     g_data = await g_res.json()
                                     games = g_data.get("games", [])[-limit:]
             else: # Lichess
-                url = f"https://lichess.org/api/games/user/{username}?max={limit}&pgnInBody=true"
+                url = f"https://lichess.org/api/games/user/{username}?max={limit}&pgnInBody=true&opening=true"
                 headers_lic = {'Accept': 'application/x-ndjson'}
                 async with session.get(url, headers=headers_lic) as res:
                     if res.status == 200:
@@ -410,33 +422,47 @@ async def analyze_player(message: types.Message):
 
     for game in games:
         pgn_text = game.get("pgn", "")
-        if pgn_text:
-            pgn = chess.pgn.read_game(io.StringIO(pgn_text))
-            if pgn:
-                # Определяем дебют
-                opening_name = detect_opening_from_moves(pgn)
-                
-                # Результат
-                white_player = pgn.headers.get("White", "").lower()
-                result = pgn.headers.get("Result", "*")
-                user_is_white = username.lower() in white_player
-                is_win = (user_is_white and result == "1-0") or (not user_is_white and result == "0-1")
-                
-                openings_stats[opening_name]["total"] += 1
-                if is_win:
-                    openings_stats[opening_name]["wins"] += 1
+        pgn = chess.pgn.read_game(io.StringIO(pgn_text)) if pgn_text else None
+        
+        # Определяем название дебюта
+        opening_name = extract_opening_name(pgn, game, platform)
+        
+        # Определение победы
+        is_win = False
+        if platform == "chesscom":
+            white_user = game.get("white", {}).get("username", "").lower()
+            white_result = game.get("white", {}).get("result", "")
+            black_result = game.get("black", {}).get("result", "")
+            
+            if username.lower() == white_user:
+                is_win = (white_result == "win")
+            else:
+                is_win = (black_result == "win")
+        else: # Lichess
+            winner = game.get("winner", "")
+            players = game.get("players", {})
+            white_user = players.get("white", {}).get("user", {}).get("name", "").lower()
+            if username.lower() == white_user:
+                is_win = (winner == "white")
+            else:
+                is_win = (winner == "black")
 
-                # Анализ Тактики
-                moves = list(pgn.mainline_moves())
-                if len(moves) > 10:
-                    board = pgn.board()
-                    for m in moves[:len(moves)//2]:
-                        board.push(m)
-                    
-                    concepts = analyze_board_concepts(board)
-                    for key in concepts:
-                        if key not in detected_keys:
-                            detected_keys.append(key)
+        openings_stats[opening_name]["total"] += 1
+        if is_win:
+            openings_stats[opening_name]["wins"] += 1
+
+        # Тактический разбор
+        if pgn:
+            moves = list(pgn.mainline_moves())
+            if len(moves) > 10:
+                board = pgn.board()
+                for m in moves[:len(moves)//2]:
+                    board.push(m)
+                
+                concepts = analyze_board_concepts(board)
+                for key in concepts:
+                    if key not in detected_keys:
+                        detected_keys.append(key)
 
     detected_keys = detected_keys[:2]
     if not detected_keys:
@@ -455,25 +481,24 @@ async def analyze_player(message: types.Message):
     # Формируем отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
-    # 1. Блок Дебютов
-    if openings_stats:
-        text += t["opening_header"]
-        sorted_openings = sorted(
-            openings_stats.items(), 
-            key=lambda item: (item[1]["wins"] / item[1]["total"]), 
-            reverse=True
-        )
-        
-        best = sorted_openings[0]
-        best_winrate = int((best[1]["wins"] / best[1]["total"]) * 100)
-        
-        if len(sorted_openings) > 1:
-            worst = sorted_openings[-1]
-            worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100)
-            text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
-            text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
-        else:
-            text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
+    # 1. Блок Дебютов (Гарантированный вывод)
+    text += t["opening_header"]
+    sorted_openings = sorted(
+        openings_stats.items(), 
+        key=lambda item: (item[1]["wins"] / item[1]["total"]) if item[1]["total"] > 0 else 0, 
+        reverse=True
+    )
+    
+    best = sorted_openings[0]
+    best_winrate = int((best[1]["wins"] / best[1]["total"]) * 100) if best[1]["total"] > 0 else 0
+    
+    if len(sorted_openings) > 1:
+        worst = sorted_openings[-1]
+        worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100) if worst[1]["total"] > 0 else 0
+        text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
+        text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
+    else:
+        text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
 
     # 2. Пояснение тактических проблем
     for key in detected_keys:
