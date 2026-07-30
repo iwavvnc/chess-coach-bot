@@ -5,6 +5,7 @@ import chess
 import chess.pgn
 import io
 import json
+import random
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -22,57 +23,104 @@ user_settings = {}
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
+# Цитаты гроссмейстеров
+CHESS_QUOTES = {
+    "ru": [
+        "«Если видишь хороший ход — не спеши, поищи ход лучше.» — *Эмануил Ласкер*",
+        "«Самое трудное в шахматах — выиграть выигранную позицию.» — *Эмануил Ласкер*",
+        "«Шахматы — это трагедия одного хода.» — *Савелий Тартаковер*",
+        "«Учитесь играть эндшпиль. Дебют лишь показывает, как надо начинать, а эндшпиль — чем заканчивать.» — *Хосе Рауль Капабланка*",
+        "«Никто никогда не выигрывал партию, сдавшись.» — *Савелий Тартаковер*",
+        "«Шахматы не для слабонервных.» — *Вильгельм Стейниц*"
+    ],
+    "en": [
+        "\"When you see a good move, look for a better one.\" — *Emanuel Lasker*",
+        "\"The hardest game to win is a won game.\" — *Emanuel Lasker*",
+        "\"Chess is a tragedy of one move.\" — *Savielly Tartakower*",
+        "\"You may learn much more from a game you lose than from a game you win.\" — *José Raúl Capablanca*",
+        "\"No one ever won a game by resigning.\" — *Savielly Tartakower*"
+    ],
+    "pt": [
+        "\"Quando vir uma boa jogada, procure uma melhor.\" — *Emanuel Lasker*",
+        "\"O jogo mais difícil de vencer é um jogo ganho.\" — *Emanuel Lasker*",
+        "\"O xadrez é uma tragédia de uma jogada.\" — *Savielly Tartakower*",
+        "\"Pode aprender muito mais com uma partida que perde do que com uma que vence.\" — *José Raúl Capablanca*"
+    ]
+}
+
 TEXTS = {
     "ru": {
-        "welcome": "👋 Привет! Я твой персональный AI-тренер по шахматам.\n\nНастрой платформу и язык, а затем отправь свой **никнейм**:",
-        "analyzing": "⚡ Скачиваю и мгновенно анализирую партии `{username}` на {platform}...",
-        "not_found": "❌ Игрок не найден на {platform}. Проверь написание никнейма!",
-        "no_games": "📊 Игрок **{username}** найден, но у него нет сыгранных партий.",
-        "header": "📊 **КОНКРЕТНЫЙ AI-АНАЛИЗ ОШИБОК ({count} ПАРТИЙ)**\nИгрок: `{username}` ({platform})\n\n",
-        "weak_header": "🎯 **Выявленные точечные проблемы и темы для проработки:**\n",
-        "plan_header": "\n🎬 **Рекомендованные видео-уроки:**\n",
-        "trainers_header": "\n🧩 **Практические задания в приложении ({platform}):**\n",
-        "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
+        "welcome": "👋 Привет! Я твой AI-тренер по шахматам.\n\nДавай настроим платформу и язык, а затем напиши мне свой **никнейм**, и я разберу твои последние партии!",
+        "analyzing": "🧠 Так-так, посмотрим... Загружаю твои последние партии `{username}` с {platform}. Дай мне пару секунд, раскладу всё по полочкам!",
+        "not_found": "❌ Слушай, я не смог найти игрока `{username}` на {platform}. Проверь, нет ли опечатки!",
+        "no_games": "📊 Никнейм `{username}` я нашел, но свежих партий у тебя пока нет. Сыграй пару каток и возвращайся!",
+        "header": "📋 **РАЗБОР ТВОИХ ПАРТИЙ ОТ AI-ТРЕНЕРА ({count} игр)**\nИгрок: `{username}` ({platform})\n\nСлушай, я внимательно изучил твои последние игры. Вот что я заметил:\n\n",
+        "plan_header": "\n🎬 **Видео для разбора (обязательно глянь на досуге):**\n",
+        "trainers_header": "\n🧩 **Задание в приложении ({platform}):**\n",
+        "weekly_task": "\n📝 **ТВОЁ ТРЕНЕРСКОЕ ЗАДАНИЕ НА ЭТУ НЕДЕЛЮ:**\n",
+        "quote_header": "\n💡 **Мудрость недели:**\n",
+        "no_videos": "*(Видео не подгрузились, но рекомендации ниже всё равно в силе!)*",
     },
     "en": {
-        "welcome": "👋 Hi! I am your personal AI chess coach.\n\nConfigure your platform and language, then send your **username**:",
-        "analyzing": "⚡ Downloading and analyzing games for `{username}` on {platform}...",
-        "not_found": "❌ Player not found on {platform}. Check your username spelling!",
-        "no_games": "📊 Player **{username}** found, but has no recent games.",
-        "header": "📊 **SPECIFIC AI ERROR ANALYSIS ({count} GAMES)**\nPlayer: `{username}` ({platform})\n\n",
-        "weak_header": "🎯 **Identified Specific Topics to Improve:**\n",
-        "plan_header": "\n🎬 **Recommended Video Lessons:**\n",
-        "trainers_header": "\n🧩 **Practical Tasks in Application ({platform}):**\n",
-        "no_videos": "*(Failed to load videos from YouTube API)*",
+        "welcome": "👋 Hi! I am your AI chess coach.\n\nSet up your platform and language, then send me your **username** and let's review your recent games!",
+        "analyzing": "🧠 Let's see... Fetching recent games for `{username}` from {platform}. Give me a few seconds to analyze!",
+        "not_found": "❌ Couldn't find player `{username}` on {platform}. Double check the spelling!",
+        "no_games": "📊 Found player `{username}`, but there are no recent games. Play a few matches and come back!",
+        "header": "📋 **AI COACH GAME REVIEW ({count} games)**\nPlayer: `{username}` ({platform})\n\nHere is what I noticed in your recent games:\n\n",
+        "plan_header": "\n🎬 **Recommended Lessons:**\n",
+        "trainers_header": "\n🧩 **Practice in ({platform}):**\n",
+        "weekly_task": "\n📝 **YOUR COACHING TASK FOR THIS WEEK:**\n",
+        "quote_header": "\n💡 **Quote of the Week:**\n",
+        "no_videos": "*(Failed to load videos, but practice tasks remain active!)*",
     },
     "pt": {
-        "welcome": "👋 Olá! Sou o seu treinador pessoal de xadrez com IA.\n\nConfigure a plataforma e o idioma e, em seguida, envie o seu **nome de utilizador**:",
-        "analyzing": "⚡ A analisar partidas de `{username}` no {platform}...",
-        "not_found": "❌ Jogador não encontrado no {platform}. Verifique o nome de utilizador!",
-        "no_games": "📊 Jogador **{username}** encontrado, mas sem partidas recentes.",
-        "header": "📊 **ANÁLISE DE ERROS ESPECÍFICOS COM IA ({count} PARTIDAS)**\nJogador: `{username}` ({platform})\n\n",
-        "weak_header": "🎯 **Tópicos Específicos Identificados para Melhorar:**\n",
-        "plan_header": "\n🎬 **Vídeo-Aulas Recomendadas:**\n",
-        "trainers_header": "\n🧩 **Tarefas Práticas na Aplicação ({platform}):**\n",
-        "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
+        "welcome": "👋 Olá! Sou o teu treinador de xadrez com IA.\n\nConfigura a plataforma e o idioma, e depois envia o teu **nome de utilizador** para analisarmos as tuas partidas!",
+        "analyzing": "🧠 Deixa ver... A descarregar partidas de `{username}` no {platform}. Dá-me uns segundos!",
+        "not_found": "❌ Não encontrei o jogador `{username}` no {platform}. Confirma o nome!",
+        "no_games": "📊 Encontrei `{username}`, mas não há partidas recentes.",
+        "header": "📋 **ANÁLISE DO TREINADOR IA ({count} partidas)**\nJogador: `{username}` ({platform})\n\nEis o que notei nas tuas partidas recentes:\n\n",
+        "plan_header": "\n🎬 **Aulas Recomendadas:**\n",
+        "trainers_header": "\n🧩 **Exercícios em ({platform}):**\n",
+        "weekly_task": "\n📝 **A TUA TAREFA DA SEMANA:**\n",
+        "quote_header": "\n💡 **Citação da Semana:**\n",
+        "no_videos": "*(Vídeos indisponíveis)*",
     }
 }
 
-# --- ПОДОБРАННЫЕ ТЕКСТОВЫЕ РЕКОМЕНДАЦИИ ПО ПЛАТФОРМАМ ---
 TRAINER_DATABASE = {
     "lichess": {
-        "undefended": "⚡ **Зависающие фигуры:** Зайди в `Обучение` ➔ `Практика` ➔ пройди модуль **«Hanging pieces»** (Незащищенные фигуры).",
-        "back_rank": "🧱 **Мат на 8-й горизонтали:** Зайди в `Задачи` ➔ `Темы задач` ➔ выбери категорию **«Мат на последней горизонтали»**.",
-        "fork": "🐴 **Коневые вилки:** Открой `Обучение` ➔ `Практика` ➔ пройди модуль **«Knight Fork»**.",
-        "pin": "🧲 **Связка и рентген:** Открой `Обучение` ➔ `Практика` ➔ пройди модуль **«The Pin»** (Связка).",
-        "endgame": "♔ **Эндшпиль:** Открой `Обучение` ➔ `Практика` ➔ выбери **«Пешечные окончания»** (Ключевые поля)."
+        "undefended": "⚡ **Зевки:** Зайди в `Обучение` ➔ `Практика` ➔ модуль **«Hanging pieces»**.",
+        "back_rank": "🧱 **Мат по 8-й:** Открой `Задачи` ➔ `Темы задач` ➔ **«Мат на последней горизонтали»**.",
+        "fork": "🐴 **Вилки:** Открой `Обучение` ➔ `Практика` ➔ модуль **«Knight Fork»**.",
+        "pin": "🧲 **Связки:** Зайди в `Обучение` ➔ `Практика` ➔ модуль **«The Pin»**.",
+        "endgame": "♔ **Эндшпиль:** Открой `Обучение` ➔ `Практика` ➔ **«Пешечные окончания»**."
     },
     "chesscom": {
-        "undefended": "⚡ **Зевки и расчет:** Открой `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Незащищенная фигура»** (Hanging Piece).",
-        "back_rank": "🧱 **Мат на 8-й горизонтали:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Слабость последней горизонтали»**.",
-        "fork": "🐴 **Коневые вилки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Двойной удар / Вилка»**.",
-        "pin": "🧲 **Связки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Связка (Pin)»**.",
-        "endgame": "♔ **Эндшпиль:** Перейди в раздел `Обучение` ➔ `Тренировка (Drills)` ➔ порешай позиции **Ладейные/Пешечные окончания** против бота."
+        "undefended": "⚡ **Зевки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбор темы **«Незащищенная фигура»**.",
+        "back_rank": "🧱 **Мат по 8-й:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ тема **«Слабость последней горизонтали»**.",
+        "fork": "🐴 **Вилки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ тема **«Двойной удар / Вилка»**.",
+        "pin": "🧲 **Связки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ тема **«Связка (Pin)»**.",
+        "endgame": "♔ **Эндшпиль:** Зайди в `Обучение` ➔ `Тренировка (Drills)` ➔ пройди **Пешечные окончания**."
+    }
+}
+
+# Человечные разборы проблем
+HUMAN_DESCRIPTIONS = {
+    "undefended": {
+        "topic": "👀 **Зевки под прямой удар.** Ты периодически оставляешь фигуры без защиты или отдаешь их сопернику буквально в один ход. Главная беда любителей — спешка.",
+        "task": "Перед каждым ходом задавай себе один простой вопрос: *«А куда теперь напал мой соперник?»*. Сделай паузу в 3–5 секунд перед тем, как отпустить фигуру."
+    },
+    "back_rank": {
+        "topic": "🚨 **Опасность на последней горизонтали.** Твой король любит сидеть в рокировке за пешками без «форточки». Чужая ладья залетает на 8-ю горизонталь — и приехали.",
+        "task": "В миттельшпиле (в середине игры), как только позиции стабилизируются, сделай профилактический ход пешкой (`h3` или `g3`), чтобы дать королю воздуху."
+    },
+    "fork": {
+        "topic": "🐴 **Коневые вилки.** Конь соперника ходит коварно, и ты регулярно пропускаешь двойные удары на короля и ладью/ферзя.",
+        "task": "Помни: конь меняет цвет поля при каждом ходе! Если твои ценные фигуры стоят на полях одного цвета — конь может поставить им вилку за один ход. Следи за этим."
+    },
+    "pin": {
+        "topic": "🧲 **Пропуск связок.** Ты забываешь про фигуры, которые прикрывают короля или ферзя, и делаешь ими ход, из-за чего летит материал.",
+        "task": "Никогда не ходи связанной фигурой! Проверяй линии слонов и ладей противника перед тем, как поднять фигуру."
     }
 }
 
@@ -87,7 +135,7 @@ def set_user_setting(user_id: int, key: str, value: str):
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
 
-    # 1. Зависающие фигуры / Зевки
+    # 1. Зависающие фигуры
     undefended = 0
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -97,7 +145,6 @@ def analyze_board_concepts(board: chess.Board) -> list:
     if undefended >= 1:
         detected.append({
             "key": "undefended",
-            "topic": "🎯 **Зависающие фигуры:** Оставление фигур под ударом без защиты (зевки).",
             "query": "как не делать зевки в шахматах"
         })
 
@@ -107,7 +154,6 @@ def analyze_board_concepts(board: chess.Board) -> list:
             if sum(1 for sq in sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color)) == 3:
                 detected.append({
                     "key": "back_rank",
-                    "topic": "🎯 **Безопасность короля:** Слабость 8-й горизонтали и отсутствие «форточки».",
                     "query": "мат по последней горизонтали форточка шахматы"
                 })
                 break
@@ -125,14 +171,12 @@ def analyze_board_concepts(board: chess.Board) -> list:
     if has_fork_risk:
         detected.append({
             "key": "fork",
-            "topic": "🎯 **Коневые вилки:** Пропуск двойных ударов конем.",
             "query": "коневая вилка двойной удар шахматы"
         })
 
     # 4. Связка
     detected.append({
         "key": "pin",
-        "topic": "🎯 **Связки и рентгены:** Защита фигур, стоящих на одной линии.",
         "query": "тактический прием связка рентген в шахматах"
     })
 
@@ -166,11 +210,11 @@ async def fetch_recent_games_async(username: str, platform: str, limit: int = 10
                             if line:
                                 games.append(json.loads(line))
     except Exception as e:
-        print(f"Ошибка асинхронной загрузки партий: {e}")
+        print(f"Ошибка загрузки партий: {e}")
         
     return games
 
-def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 2) -> list:
+def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
         return []
     videos = []
@@ -247,12 +291,11 @@ async def analyze_player(message: types.Message):
     games = await fetch_recent_games_async(username, platform, limit=10)
     
     if not games:
-        await message.answer(t["not_found"].format(platform=platform_name), reply_markup=get_settings_keyboard(user_id))
+        await message.answer(t["not_found"].format(username=username, platform=platform_name), reply_markup=get_settings_keyboard(user_id))
         return
 
-    detected_issues = []
+    detected_keys = []
     yt_queries = []
-    trainer_keys = []
 
     for game in games:
         pgn_text = game.get("pgn", "")
@@ -267,45 +310,32 @@ async def analyze_player(message: types.Message):
                     
                     concepts = analyze_board_concepts(board)
                     for item in concepts:
-                        if item["topic"] not in detected_issues:
-                            detected_issues.append(item["topic"])
+                        if item["key"] not in detected_keys:
+                            detected_keys.append(item["key"])
                             yt_queries.append(item["query"])
-                            trainer_keys.append(item["key"])
 
-    detected_issues = detected_issues[:3]
-    yt_queries = yt_queries[:3]
-    trainer_keys = trainer_keys[:3]
+    detected_keys = detected_keys[:2]
+    yt_queries = yt_queries[:2]
 
-    if not detected_issues:
-        detected_issues = [
-            "🎯 **Расчет вариантов:** Предупреждение зевков и точный выбор ходов.",
-            "🎯 **Связки и рентгены:** Защита фигур, стоящих на одной линии."
-        ]
-        yt_queries = [
-            "как не делать зевки в шахматах",
-            "тактический прием связка рентген в шахматах"
-        ]
-        trainer_keys = ["undefended", "pin"]
+    if not detected_keys:
+        detected_keys = ["undefended", "pin"]
+        yt_queries = ["как не делать зевки в шахматах", "тактический прием связка рентген в шахматах"]
 
-    if "endgame" not in trainer_keys:
-        trainer_keys.append("endgame")
-
-    # YouTube ролики
+    # Ролики YouTube
     all_videos = []
     for q in yt_queries:
-        vids = search_youtube_videos(q, lang=lang, max_results=2)
-        for v in vids:
-            if not any(existing['url'] == v['url'] for existing in all_videos):
-                all_videos.append(v)
+        vids = search_youtube_videos(q, lang=lang, max_results=1)
+        all_videos.extend(vids)
 
-    all_videos = all_videos[:5]
-
-    # Формируем отчет
+    # Формируем человечный отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
-    text += t["weak_header"]
-    for issue in detected_issues:
-        text += f"{issue}\n"
+    
+    # 1. Пояснение проблем живым языком
+    for key in detected_keys:
+        info = HUMAN_DESCRIPTIONS.get(key, HUMAN_DESCRIPTIONS["undefended"])
+        text += f"{info['topic']}\n\n"
 
+    # 2. Видео-уроки
     text += t["plan_header"]
     if all_videos:
         for idx, vid in enumerate(all_videos, 1):
@@ -313,13 +343,25 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Формируем точные текстовые инструкции для практических занятий
+    # 3. Инструкции по тренировкам
     text += t["trainers_header"].format(platform=platform_name)
     plat_trainers = TRAINER_DATABASE.get(platform, TRAINER_DATABASE["chesscom"])
-    
-    for key in trainer_keys:
+    for key in detected_keys:
         if key in plat_trainers:
             text += f"• {plat_trainers[key]}\n"
+    text += f"• {plat_trainers.get('endgame')}\n"
+
+    # 4. Задание на неделю
+    text += t["weekly_task"]
+    main_key = detected_keys[0]
+    task_desc = HUMAN_DESCRIPTIONS.get(main_key, HUMAN_DESCRIPTIONS["undefended"])["task"]
+    text += f"👉 {task_desc}\n"
+
+    # 5. Цитата в конце
+    quotes_list = CHESS_QUOTES.get(lang, CHESS_QUOTES["ru"])
+    random_quote = random.choice(quotes_list)
+    text += t["quote_header"]
+    text += f"{random_quote}\n"
 
     await message.answer(
         text, 
@@ -340,7 +382,7 @@ async def main():
     site = web.TCPSite(runner, "0.0.0.0", port)
     await site.start()
     
-    print("🚀 БОТ И ВЕБ-СЕРВЕР УСПЕШНО ЗАПУЩЕНЫ!")
+    print("🚀 БОТ УСПЕШНО ЗАПУЩЕН!")
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
