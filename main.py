@@ -32,7 +32,7 @@ OPENING_PATTERNS = {
     "e4 c6": "Защита Каро-Канн",
     "d4 d5 c4": "Ферзевый гамбит",
     "d4 Nf6 c4 g6": "Староиндийская защита",
-    "d4 Nf6 c4 e6": "Защита Нимцовича / Новоиндийская",
+    "d4 Nf6 c4 e6": "Защита Нимцовича",
     "e4 e5 Nf3 Nf6": "Русская партия",
     "e4 d5": "Скандинавская защита",
     "c4": "Английское начало",
@@ -72,9 +72,10 @@ LANG_DATA = {
         "header": "📋 **РАЗБОР ТВОИХ ПАРТИЙ ОТ AI-ТРЕНЕРА ({count} игр)**\nИгрок: `{username}` ({platform})\n\nСлушай, я внимательно изучил твои последние игры. Вот что я заметил:\n\n",
         "opening_header": "📖 **ТВОЙ ДЕБЮТНЫЙ РЕПЕРТУАР:**\n",
         "best_opening": "🟢 **Твой лучший дебют:** {opening} (Побед: {winrate}%)\n",
-        "worst_opening": "🔴 **Проблемный дебют:** {opening} (Побед: {winrate}%)\n👉 *Тренерская рекомендация:* Посмотри теорию по этому дебюту, ты теряешь в нем очка!\n\n",
+        "worst_opening": "🔴 **Проблемный дебют:** {opening} (Побед: {winrate}%)\n👉 *Тренерская рекомендация:* Посмотри теорию по этому дебюту, ты теряешь в нем очки!\n\n",
         "single_opening": "📊 **Твой основной дебют:** {opening} (Побед: {winrate}%)\n\n",
-        "plan_header": "\n🎬 **Видео для разбора (обязательно глянь на досуге):**\n",
+        "opening_videos_header": "\n📘 **Видео по дебюту ({opening}):**\n",
+        "plan_header": "\n🎬 **Видео по тактике:**\n",
         "trainers_header": "\n🧩 **Задание в приложении ({platform}):**\n",
         "weekly_task": "\n📝 **ТВОЁ ТРЕНЕРСКОЕ ЗАДАНИЕ НА ЭТУ НЕДЕЛЮ:**\n",
         "quote_header": "\n💡 **Мудрость недели:**\n",
@@ -111,7 +112,8 @@ LANG_DATA = {
         "best_opening": "🟢 **Best opening:** {opening} (Winrate: {winrate}%)\n",
         "worst_opening": "🔴 **Trouble opening:** {opening} (Winrate: {winrate}%)\n👉 *Coach Advice:* Study some theory for this opening!\n\n",
         "single_opening": "📊 **Main opening:** {opening} (Winrate: {winrate}%)\n\n",
-        "plan_header": "\n🎬 **Recommended Lessons:**\n",
+        "opening_videos_header": "\n📘 **Opening Lessons ({opening}):**\n",
+        "plan_header": "\n🎬 **Tactics Lessons:**\n",
         "trainers_header": "\n🧩 **Practice in ({platform}):**\n",
         "weekly_task": "\n📝 **YOUR COACHING TASK FOR THIS WEEK:**\n",
         "quote_header": "\n💡 **Quote of the Week:**\n",
@@ -148,7 +150,8 @@ LANG_DATA = {
         "best_opening": "🟢 **Melhor abertura:** {opening} (Vitórias: {winrate}%)\n",
         "worst_opening": "🔴 **Abertura problemática:** {opening} (Vitórias: {winrate}%)\n👉 *Conselho do Treinador:* Estuda a teoria desta abertura!\n\n",
         "single_opening": "📊 **Abertura principal:** {opening} (Vitórias: {winrate}%)\n\n",
-        "plan_header": "\n🎬 **Aulas Recomendadas:**\n",
+        "opening_videos_header": "\n📘 **Vídeos da Abertura ({opening}):**\n",
+        "plan_header": "\n🎬 **Vídeos de Táctica:**\n",
         "trainers_header": "\n🧩 **Exercícios em ({platform}):**\n",
         "weekly_task": "\n📝 **A TUA TAREFA DA SEMANA:**\n",
         "quote_header": "\n💡 **Citação da Semana:**\n",
@@ -238,25 +241,31 @@ def set_user_setting(user_id: int, key: str, value: str):
     user_settings[user_id][key] = value
 
 def extract_opening_name(pgn_obj, game_raw, platform) -> str:
-    # 1. Считываем из PGN заголовков
+    # 1. Из PGN заголовков
     if pgn_obj:
         opening_tag = pgn_obj.headers.get("Opening", "")
         if opening_tag and opening_tag != "?":
-            return opening_tag.split(":")[0].split(",")[0].strip()
+            clean_name = opening_tag.split(":")[0].split(",")[0].strip()
+            if "unknown" not in clean_name.lower():
+                return clean_name
 
-    # 2. Попытка взять из JSON Chess.com / Lichess напрямую
+    # 2. Из JSON API
     if platform == "chesscom":
         eco_url = game_raw.get("eco", "")
         if eco_url:
             parts = eco_url.split("/")
             if parts:
-                return parts[-1].replace("-", " ").title()
+                name = parts[-1].replace("-", " ").title()
+                if "unknown" not in name.lower():
+                    return name
     elif platform == "lichess":
         opening_json = game_raw.get("opening", {}).get("name", "")
         if opening_json:
-            return opening_json.split(":")[0].split(",")[0].strip()
+            clean_name = opening_json.split(":")[0].split(",")[0].strip()
+            if "unknown" not in clean_name.lower():
+                return clean_name
 
-    # 3. Резерв по первому ходу
+    # 3. По первому ходу
     if pgn_obj:
         board = pgn_obj.board()
         moves_san = []
@@ -268,7 +277,8 @@ def extract_opening_name(pgn_obj, game_raw, platform) -> str:
             if moves_str.startswith(pattern):
                 return name
 
-    return "Дебют e4 / d4"
+    # Если не удалось распознать — возвращаем None для фильтрации
+    return None
 
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
@@ -424,32 +434,33 @@ async def analyze_player(message: types.Message):
         pgn_text = game.get("pgn", "")
         pgn = chess.pgn.read_game(io.StringIO(pgn_text)) if pgn_text else None
         
-        # Определяем название дебюта
+        # Название дебюта
         opening_name = extract_opening_name(pgn, game, platform)
         
-        # Определение победы
-        is_win = False
-        if platform == "chesscom":
-            white_user = game.get("white", {}).get("username", "").lower()
-            white_result = game.get("white", {}).get("result", "")
-            black_result = game.get("black", {}).get("result", "")
-            
-            if username.lower() == white_user:
-                is_win = (white_result == "win")
-            else:
-                is_win = (black_result == "win")
-        else: # Lichess
-            winner = game.get("winner", "")
-            players = game.get("players", {})
-            white_user = players.get("white", {}).get("user", {}).get("name", "").lower()
-            if username.lower() == white_user:
-                is_win = (winner == "white")
-            else:
-                is_win = (winner == "black")
+        # Если название не определилось — пропускаем эту партию из дебютного анализа
+        if opening_name:
+            is_win = False
+            if platform == "chesscom":
+                white_user = game.get("white", {}).get("username", "").lower()
+                white_result = game.get("white", {}).get("result", "")
+                black_result = game.get("black", {}).get("result", "")
+                
+                if username.lower() == white_user:
+                    is_win = (white_result == "win")
+                else:
+                    is_win = (black_result == "win")
+            else: # Lichess
+                winner = game.get("winner", "")
+                players = game.get("players", {})
+                white_user = players.get("white", {}).get("user", {}).get("name", "").lower()
+                if username.lower() == white_user:
+                    is_win = (winner == "white")
+                else:
+                    is_win = (winner == "black")
 
-        openings_stats[opening_name]["total"] += 1
-        if is_win:
-            openings_stats[opening_name]["wins"] += 1
+            openings_stats[opening_name]["total"] += 1
+            if is_win:
+                openings_stats[opening_name]["wins"] += 1
 
         # Тактический разбор
         if pgn:
@@ -468,52 +479,66 @@ async def analyze_player(message: types.Message):
     if not detected_keys:
         detected_keys = ["undefended", "pin"]
 
-    # Ролики YouTube
-    all_videos = []
+    # Ролики YouTube по тактике
+    tactics_videos = []
     topics_dict = t.get("topics", LANG_DATA["ru"]["topics"])
-    
     for key in detected_keys:
         topic_info = topics_dict.get(key, topics_dict.get("undefended"))
         yt_query = topic_info.get("yt", "chess tactics")
         vids = search_youtube_videos(yt_query, lang=lang, max_results=1)
-        all_videos.extend(vids)
+        tactics_videos.extend(vids)
 
     # Формируем отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
-    # 1. Блок Дебютов (Гарантированный вывод)
-    text += t["opening_header"]
-    sorted_openings = sorted(
-        openings_stats.items(), 
-        key=lambda item: (item[1]["wins"] / item[1]["total"]) if item[1]["total"] > 0 else 0, 
-        reverse=True
-    )
-    
-    best = sorted_openings[0]
-    best_winrate = int((best[1]["wins"] / best[1]["total"]) * 100) if best[1]["total"] > 0 else 0
-    
-    if len(sorted_openings) > 1:
-        worst = sorted_openings[-1]
-        worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100) if worst[1]["total"] > 0 else 0
-        text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
-        text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
-    else:
-        text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
+    target_opening_for_video = None
 
-    # 2. Пояснение тактических проблем
+    # 1. Блок Дебютов
+    if openings_stats:
+        text += t["opening_header"]
+        sorted_openings = sorted(
+            openings_stats.items(), 
+            key=lambda item: (item[1]["wins"] / item[1]["total"]) if item[1]["total"] > 0 else 0, 
+            reverse=True
+        )
+        
+        best = sorted_openings[0]
+        best_winrate = int((best[1]["wins"] / best[1]["total"]) * 100) if best[1]["total"] > 0 else 0
+        
+        if len(sorted_openings) > 1:
+            worst = sorted_openings[-1]
+            worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100) if worst[1]["total"] > 0 else 0
+            text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
+            text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
+            target_opening_for_video = worst[0] # Берем худший дебют для уроков
+        else:
+            text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
+            target_opening_for_video = best[0]
+
+    # 2. Видео по Дебюту (1-2 видео)
+    if target_opening_for_video:
+        opening_query = f"{target_opening_for_video} шахматы ловушки разбор" if lang == "ru" else f"{target_opening_for_video} chess guide opening"
+        opening_vids = search_youtube_videos(opening_query, lang=lang, max_results=2)
+        if opening_vids:
+            text += t["opening_videos_header"].format(opening=target_opening_for_video)
+            for idx, vid in enumerate(opening_vids, 1):
+                text += f"{idx}. [{vid['title']}]({vid['url']})\n"
+
+    # 3. Пояснение тактических проблем
+    text += "\n"
     for key in detected_keys:
         info = topics_dict.get(key, topics_dict.get("undefended"))
         text += f"{info['topic']}\n\n"
 
-    # 3. Видео-уроки
+    # 4. Видео по Тактике
     text += t["plan_header"]
-    if all_videos:
-        for idx, vid in enumerate(all_videos, 1):
+    if tactics_videos:
+        for idx, vid in enumerate(tactics_videos, 1):
             text += f"{idx}. [{vid['title']}]({vid['url']})\n"
     else:
         text += t["no_videos"]
 
-    # 4. Инструкции по тренировкам
+    # 5. Инструкции по тренировкам
     text += t["trainers_header"].format(platform=platform_name)
     plat_trainers = TRAINER_DATABASE.get(platform, {}).get(lang, TRAINER_DATABASE["chesscom"]["ru"])
     for key in detected_keys:
@@ -522,13 +547,13 @@ async def analyze_player(message: types.Message):
     if "endgame" in plat_trainers:
         text += f"• {plat_trainers['endgame']}\n"
 
-    # 5. Задание на неделю
+    # 6. Задание на неделю
     text += t["weekly_task"]
     main_key = detected_keys[0]
     task_desc = topics_dict.get(main_key, topics_dict.get("undefended"))["task"]
     text += f"👉 {task_desc}\n"
 
-    # 6. Цитата
+    # 7. Цитата
     quotes_list = CHESS_QUOTES.get(lang, CHESS_QUOTES["ru"])
     random_quote = random.choice(quotes_list)
     text += t["quote_header"]
