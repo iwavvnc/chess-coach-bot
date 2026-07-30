@@ -31,7 +31,7 @@ TEXTS = {
         "header": "📊 **КОНКРЕТНЫЙ AI-АНАЛИЗ ОШИБОК ({count} ПАРТИЙ)**\nИгрок: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Выявленные точечные проблемы и темы для проработки:**\n",
         "plan_header": "\n🎬 **Рекомендованные видео-уроки:**\n",
-        "trainers_header": "\n🧩 **Интерактивные тренажеры для смартфона:**\n",
+        "trainers_header": "\n🧩 **Интерактивные тренажеры для смартфона ({platform}):**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
     },
     "en": {
@@ -42,7 +42,7 @@ TEXTS = {
         "header": "📊 **SPECIFIC AI ERROR ANALYSIS ({count} GAMES)**\nPlayer: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Identified Specific Topics to Improve:**\n",
         "plan_header": "\n🎬 **Recommended Video Lessons:**\n",
-        "trainers_header": "\n🧩 **Interactive Mobile Practice Trainers:**\n",
+        "trainers_header": "\n🧩 **Interactive Mobile Practice Trainers ({platform}):**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
     },
     "pt": {
@@ -53,32 +53,56 @@ TEXTS = {
         "header": "📊 **ANÁLISE DE ERROS ESPECÍFICOS COM IA ({count} PARTIDAS)**\nJogador: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Tópicos Específicos Identificados para Melhorar:**\n",
         "plan_header": "\n🎬 **Vídeo-Aulas Recomendadas:**\n",
-        "trainers_header": "\n🧩 **Treinadores Interativos para Telemóvel:**\n",
+        "trainers_header": "\n🧩 **Treinadores Interativos para Telemóvel ({platform}):**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
     }
 }
 
-# --- БАЗА ИНТЕРАКТИВНЫХ МОБИЛЬНЫХ ТРЕНАЖЕРОВ ---
+# --- ИСПРАВЛЕННАЯ БАЗА ТРЕНАЖЕРОВ ПО ПЛАТФОРМАМ ---
 TRAINER_DATABASE = {
-    "undefended": {
-        "title": "⚡ **Тренажер: Борьба с зевками и зависающими фигурами**",
-        "url": "https://lichess.org/practice/basic-tactics/hanging-pieces/9P1c8e7A"
+    "lichess": {
+        "undefended": {
+            "title": "⚡ Тренажер Lichess: Борьба с зевками",
+            "url": "https://lichess.org/practice/basic-tactics/hanging-pieces/R8a9W4G2"
+        },
+        "back_rank": {
+            "title": "🧱 Тренажер Lichess: Мат по 8-й горизонтали",
+            "url": "https://lichess.org/practice/checkmates/checkmate-patterns/D3yF7H1R"
+        },
+        "fork": {
+            "title": "🐴 Тренажер Lichess: Коневые вилки",
+            "url": "https://lichess.org/practice/basic-tactics/knight-fork/rZ6vT8cM"
+        },
+        "pin": {
+            "title": "🧲 Тренажер Lichess: Связки и рентгены",
+            "url": "https://lichess.org/practice/basic-tactics/the-pin/B8b3Z7nK"
+        },
+        "endgame": {
+            "title": "♔ Тренажер Lichess: Практика эндшпиля",
+            "url": "https://lichess.org/practice/pawn-endgames/key-squares/E7x1Q0W9"
+        }
     },
-    "back_rank": {
-        "title": "🧱 **Тренажер: Мат по 8-й горизонтали и завлечение**",
-        "url": "https://lichess.org/practice/checkmates/checkmate-patterns/28e5a720"
-    },
-    "fork": {
-        "title": "🐴 **Тренажер: Коневые вилки и двойные удары**",
-        "url": "https://lichess.org/practice/basic-tactics/knight-fork/O3f7WfT4"
-    },
-    "pin": {
-        "title": "🧲 **Тренажер: Связки и рентгены**",
-        "url": "https://lichess.org/practice/basic-tactics/the-pin/84zK4b2Q"
-    },
-    "endgame": {
-        "title": "♔ **Тренажер: Базовые эндшпили (Ладейники и пешники)**",
-        "url": "https://lichess.org/practice/pawn-endgames/key-squares/L28m7Z9Q"
+    "chesscom": {
+        "undefended": {
+            "title": "⚡ Задачи Chess.com: Просчет и зевки",
+            "url": "https://www.chess.com/puzzles/rated"
+        },
+        "back_rank": {
+            "title": "🧱 Задачи Chess.com: Матовые комбинации",
+            "url": "https://www.chess.com/puzzles/theme/back-rank"
+        },
+        "fork": {
+            "title": "🐴 Задачи Chess.com: Вилки и двойные удары",
+            "url": "https://www.chess.com/puzzles/theme/fork"
+        },
+        "pin": {
+            "title": "🧲 Задачи Chess.com: Связка (Pin)",
+            "url": "https://www.chess.com/puzzles/theme/pin"
+        },
+        "endgame": {
+            "title": "♔ Эндшпиль Chess.com: Тренировка окончаний",
+            "url": "https://www.chess.com/drills/endgame"
+        }
     }
 }
 
@@ -293,11 +317,10 @@ async def analyze_player(message: types.Message):
         ]
         trainer_keys = ["undefended", "pin"]
 
-    # Добавляем универсальный тренажер по эндшпилю
     if "endgame" not in trainer_keys:
         trainer_keys.append("endgame")
 
-    # Собираем видео
+    # Собираем ролики
     all_videos = []
     for q in yt_queries:
         vids = search_youtube_videos(q, lang=lang, max_results=2)
@@ -307,7 +330,7 @@ async def analyze_player(message: types.Message):
 
     all_videos = all_videos[:5]
 
-    # Формируем текст
+    # Текст сообщения
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
     for issue in detected_issues:
@@ -320,11 +343,13 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Добавляем тренажеры
-    text += t["trainers_header"]
+    # Добавляем динамические ссылки под выбранную платформу
+    text += t["trainers_header"].format(platform=platform_name)
+    plat_trainers = TRAINER_DATABASE.get(platform, TRAINER_DATABASE["lichess"])
+    
     for key in trainer_keys:
-        if key in TRAINER_DATABASE:
-            tr = TRAINER_DATABASE[key]
+        if key in plat_trainers:
+            tr = plat_trainers[key]
             text += f"• [{tr['title']}]({tr['url']})\n"
 
     await message.answer(
