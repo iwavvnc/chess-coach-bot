@@ -350,7 +350,7 @@ def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int =
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
         
-        # Первая попытка - с языковым фильтром
+        # 1-я попытка: поиск с предложенным языковым фильтром
         request = youtube.search().list(
             q=query_topic,
             part="snippet",
@@ -360,10 +360,11 @@ def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int =
         )
         response = request.execute()
         
-        # Если ничего не нашли — делаем второй фоллбек-запрос без языкового фильтра
+        # 2-я попытка (Fallback): если ничего не нашли, ищем на английском без языковых ограничений
         if not response.get("items"):
+            fallback_query = f"{query_topic} chess lesson"
             request = youtube.search().list(
-                q=query_topic,
+                q=fallback_query,
                 part="snippet",
                 maxResults=max_results,
                 type="video"
@@ -488,21 +489,21 @@ async def analyze_player(message: types.Message):
     if not detected_keys:
         detected_keys = ["undefended", "pin"]
 
-    # Ролики YouTube по тактике
+    # Поиск роликoв по тактике
     tactics_videos = []
     topics_dict = t.get("topics", LANG_DATA["ru"]["topics"])
     for key in detected_keys:
         topic_info = topics_dict.get(key, topics_dict.get("undefended"))
-        yt_query = topic_info.get("yt", "шахматы тактика")
+        yt_query = topic_info.get("yt", "chess tactics")
         vids = search_youtube_videos(yt_query, lang=lang, max_results=1)
         tactics_videos.extend(vids)
 
-    # Формируем отчет
+    # Формирование отчета
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     
     target_opening_for_video = None
 
-    # 1. Блок Дебютов
+    # 1. Анализ дебютного репертуара
     if openings_stats:
         text += t["opening_header"]
         sorted_openings = sorted(
@@ -524,7 +525,7 @@ async def analyze_player(message: types.Message):
             text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
             target_opening_for_video = best[0]
 
-    # 2. Видео по Дебюту (Упрощенный и надежный запрос)
+    # 2. Поиск видео по дебюту с поддержкой англоязычного fallback
     if target_opening_for_video:
         if lang == "ru":
             opening_query = f"{target_opening_for_video} шахматы"
@@ -539,13 +540,13 @@ async def analyze_player(message: types.Message):
             for idx, vid in enumerate(opening_vids, 1):
                 text += f"{idx}. [{vid['title']}]({vid['url']})\n"
 
-    # 3. Пояснение тактических проблем
+    # 3. Тактические проблемы
     text += "\n"
     for key in detected_keys:
         info = topics_dict.get(key, topics_dict.get("undefended"))
         text += f"{info['topic']}\n\n"
 
-    # 4. Видео по Тактике
+    # 4. Тактические видео
     text += t["plan_header"]
     if tactics_videos:
         for idx, vid in enumerate(tactics_videos, 1):
@@ -553,7 +554,7 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # 5. Инструкции по тренировкам
+    # 5. Практика
     text += t["trainers_header"].format(platform=platform_name)
     plat_trainers = TRAINER_DATABASE.get(platform, {}).get(lang, TRAINER_DATABASE["chesscom"]["ru"])
     for key in detected_keys:
@@ -562,7 +563,7 @@ async def analyze_player(message: types.Message):
     if "endgame" in plat_trainers:
         text += f"• {plat_trainers['endgame']}\n"
 
-    # 6. Задание на неделю
+    # 6. Недельное задание
     text += t["weekly_task"]
     main_key = detected_keys[0]
     task_desc = topics_dict.get(main_key, topics_dict.get("undefended"))["task"]
