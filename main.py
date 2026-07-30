@@ -174,106 +174,57 @@ def set_user_setting(user_id: int, key: str, value: str):
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
 
-# --- ПРЯМЫЕ ПРОВЕРЕННЫЕ ССЫЛКИ НА СТАТЬИ И РУКОВОДСТВА ---
-def search_articles_ddg(query_topic: str, lang: str = "ru") -> list:
-    # Точная база прямых обучающих материалов
-    guides_database = {
-        "ru": {
-            "как перестать зевать фигуры в шахматах": {
-                "title": "📖 Руководство: Как перестать зевать фигуры и видеть тактику",
-                "url": "https://lichess.org/practice/basic-tactics/checkmates/H393k995"
-            },
-            "принципы шахматного дебюта": {
-                "title": "📰 ChessBase: Главные принципы правильного развития в дебюте",
-                "url": "https://ru.chessbase.com/post/chess-opening-principles"
-            },
-            "стратегия миттельшпиля в шахматах": {
-                "title": "📚 Lichess Study: Базовая стратегия и планирование в миттельшпиле",
-                "url": "https://lichess.org/study/1R32jL8T"
-            },
-            "пешечные окончания руководство": {
-                "title": "🧩 Chesstempo: Интерактивный тренажер пешечных окончаний",
-                "url": "https://chesstempo.com/chess-endgames/pawn-endgames"
-            },
-            "расчет вариантов в шахматах кандидатные ходы": {
-                "title": "📰 ChessBase: Метод ходов-кандидатов и точность расчета",
-                "url": "https://ru.chessbase.com/post/calculation-training-in-chess"
-            },
-            "сложные ладейные окончания": {
-                "title": "📚 Lichess Study: Фундаментальные ладейные окончания (Позиции Филидора и Лусены)",
-                "url": "https://lichess.org/study/vR4dE0P2"
-            }
-        },
-        "en": {
-            "how to stop blundering chess article": {
-                "title": "📖 Lichess Practice: Master Basic Tactics & Stop Blundering",
-                "url": "https://lichess.org/practice"
-            },
-            "opening principles chess guide": {
-                "title": "📰 ChessBase: Fundamental Opening Principles Every Player Must Know",
-                "url": "https://en.chessbase.com/post/opening-principles-for-beginners"
-            },
-            "middlegame strategy chess guide": {
-                "title": "📚 Lichess Study: Comprehensive Middlegame Planning Guide",
-                "url": "https://lichess.org/study/1R32jL8T"
-            },
-            "pawn endgame principles": {
-                "title": "🧩 Chesstempo: Interactive Pawn Endgame Training & Rules",
-                "url": "https://chesstempo.com/chess-endgames/pawn-endgames"
-            },
-            "chess calculation candidate moves": {
-                "title": "📰 ChessBase: Calculation Techniques & Candidate Moves",
-                "url": "https://en.chessbase.com/post/calculation-in-chess-principles"
-            },
-            "rook endgame strategy guide": {
-                "title": "📚 Lichess Study: Essential Rook Endgames (Lucena & Philidor Positions)",
-                "url": "https://lichess.org/study/vR4dE0P2"
-            }
-        },
-        "pt": {
-            "como evitar erros taticos xadrez artigo": {
-                "title": "📖 Prática no Lichess: Aprenda a Evitar Erros Táticos",
-                "url": "https://lichess.org/practice"
-            },
-            "principios de abertura xadrez": {
-                "title": "📰 ChessBase PT: Princípios Fundamentais da Abertura no Xadrez",
-                "url": "https://pt.chessbase.com/post/principios-de-abertura"
-            },
-            "estrategia meio jogo xadrez guia": {
-                "title": "📚 Estudo no Lichess: Guia Prático de Planeamento no Meio-Jogo",
-                "url": "https://lichess.org/study/1R32jL8T"
-            },
-            "finais de peoes xadrez": {
-                "title": "🧩 Chesstempo: Treino Interativo de Finais de Peões",
-                "url": "https://chesstempo.com/chess-endgames/pawn-endgames"
-            },
-            "calculo de variantes xadrez": {
-                "title": "📰 ChessBase: Técnicas de Cálculo e Seleção de Lances",
-                "url": "https://en.chessbase.com/post/calculation-in-chess-principles"
-            },
-            "finais de torres xadrez guia": {
-                "title": "📚 Estudo no Lichess: Finais de Torres Essenciais (Lucena e Philidor)",
-                "url": "https://lichess.org/study/vR4dE0P2"
-            }
-        }
-    }
+import urllib.parse
+import re
 
-    # Берем словарь для нужного языка
-    lang_dict = guides_database.get(lang, guides_database["ru"])
-    
-    # Достаем прямую ссылку на конкретный материал
-    match = lang_dict.get(query_topic)
-    
-    if match:
-        return [match]
-    
-    # Запасной вариант на случай неизвестной темы
-    default_guides = {
-        "ru": {"title": "📖 Руководство и практика на Lichess", "url": "https://lichess.org/practice"},
-        "en": {"title": "📖 Interactive Practice & Studies on Lichess", "url": "https://lichess.org/practice"},
-        "pt": {"title": "📖 Guia de Treino Interativo no Lichess", "url": "https://lichess.org/practice"}
-    }
-    return [default_guides.get(lang, default_guides["ru"])]
+# --- НАДЕЖНЫЙ ЖИВОЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO HTML ---
+def search_articles_ddg(query_topic: str, lang: str = "ru") -> list:
+    articles = []
+    try:
+        prefix = "Xadrez" if lang == "pt" else ("Chess" if lang == "en" else "Шахматы")
+        search_query = f"{prefix} {query_topic}"
+        encoded_query = urllib.parse.quote(search_query)
+        
+        # Запрос к официальной легкой HTML-версии DuckDuckGo
+        url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=5)
+        
+        if response.status_code == 200:
+            # Находим заголовки и ссылки в HTML
+            # Ищем ссылки с классом result__a
+            pattern = r'<a class="result__a" href="([^"]+)">(.*?)</a>'
+            matches = re.findall(pattern, response.text)
+            
+            for href, raw_title in matches[:1]: # Берем 1 лучшую статью
+                # Очищаем заголовок от HTML-тегов
+                clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
+                
+                # Извлекаем настоящий URL из перенаправления DuckDuckGo
+                parsed_url = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+                real_url = parsed_url.get('uddg', [href])[0]
+                
+                if real_url and clean_title:
+                    articles.append({
+                        "title": clean_title,
+                        "url": real_url
+                    })
+    except Exception as e:
+        print(f"Ошибка живого поиска статей: {e}")
+
+    # Если поисковик временно недоступен — даем заведомо рабочую страницу разделов Lichess/Chess.com
+    if not articles:
+        fallback_sites = {
+            "ru": {"title": f"📖 Уроки и статьи по теме: {query_topic.capitalize()}", "url": "https://lichess.org/practice"},
+            "en": {"title": f"📖 Guides & Lessons: {query_topic.capitalize()}", "url": "https://lichess.org/practice"},
+            "pt": {"title": f"📖 Guias e Treino: {query_topic.capitalize()}", "url": "https://lichess.org/practice"}
+        }
+        articles.append(fallback_sites.get(lang, fallback_sites["ru"]))
+
+    return articles
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
