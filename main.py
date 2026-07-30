@@ -6,6 +6,7 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 from googleapiclient.discovery import build
+from ddgs import DDGS
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -13,13 +14,11 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Настройки пользователей: {user_id: {"platform": "chesscom"|"lichess", "lang": "ru"|"en"|"pt"}}
 user_settings = {}
 
 LANG_NEXT = {"ru": "en", "en": "pt", "pt": "ru"}
 LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "🇵🇹 Português"}
 
-# --- СЛОВАРЬ ЛОКАЛИЗАЦИИ И ПРЯМЫХ ССЫЛОК НА СТАТЬИ ---
 TEXTS = {
     "ru": {
         "welcome": "👋 Привет! Я твой персональный шахматный тренер.\n\nНастрой платформу и язык, а затем отправь свой **никнейм**:",
@@ -35,6 +34,7 @@ TEXTS = {
         "plan_header": "\n🎬 **Персональный учебный план (Видео):**\n",
         "articles_header": "\n📚 **Рекомендованные статьи и гайды:**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
+        "no_articles": "*(Не удалось найти статьи)*",
         "levels": {
             "beginner": "Начинающий уровень",
             "intermediate": "Любительский уровень",
@@ -57,24 +57,15 @@ TEXTS = {
                 "⚠️ **Профилактика:** Недостаточный учет контригры соперника."
             ]
         },
-        "topics": {
-            "beginner": ["базовые зевы фигуры", "основы дебюта контроль центра", "как перестать спешить в шахматах"],
-            "intermediate": ["типовые планы в миттельшпиле", "основы пешечных окончаний", "шахматная стратегия средний уровень"],
-            "advanced": ["глубокий расчет вариантов", "ладейные окончания продвинутый", "профилактическое мышление в шахматах"]
+        "yt_topics": {
+            "beginner": ["базовые зевы фигуры", "основы дебюта контроль центра"],
+            "intermediate": ["типовые планы в миттельшпиле", "основы пешечных окончаний"],
+            "advanced": ["глубокий расчет вариантов", "ладейные окончания продвинутый"]
         },
-        "articles": {
-            "beginner": [
-                {"title": "📖 Принципы шахматного дебюта (Chess.com)", "url": "https://www.chess.com/ru/terms/shakhmatnyi-debiut"},
-                {"title": "📖 Базовые матовые паттерны (Lichess)", "url": "https://lichess.org/practice/checkmates/checkmate-patterns/A8A21Maa/3_6d8dmd"}
-            ],
-            "intermediate": [
-                {"title": "📖 Миттельшпиль в шахматах (Chess.com)", "url": "https://www.chess.com/ru/terms/mittelshpil-v-shakhmatakh"},
-                {"title": "📖 Практика эндшпиля: Пешечные окончания (Lichess)", "url": "https://lichess.org/practice/pawn-endgames/key-squares/L9ed4uI3/l529EawB"}
-            ],
-            "advanced": [
-                {"title": "📖 Расчет вариантов и кандидаты ходов (Chess.com)", "url": "https://www.chess.com/ru/article/view/kandidaty-v-khody-v-shakhmatakh"},
-                {"title": "📖 Курс по ладейным окончаниям (Lichess Study)", "url": "https://lichess.org/study/vQWfGzO7"}
-            ]
+        "article_topics": {
+            "beginner": ["как перестать зевать фигуры в шахматах", "принципы шахматного дебюта"],
+            "intermediate": ["стратегия миттельшпиля в шахматах", "пешечные окончания руководство"],
+            "advanced": ["расчет вариантов в шахматах кандидатные ходы", "сложные ладейные окончания"]
         }
     },
     "en": {
@@ -91,6 +82,7 @@ TEXTS = {
         "plan_header": "\n🎬 **Personal Training Plan (Videos):**\n",
         "articles_header": "\n📚 **Recommended Articles & Guides:**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
+        "no_articles": "*(Failed to load articles)*",
         "levels": {
             "beginner": "Beginner Level",
             "intermediate": "Intermediate Level",
@@ -113,24 +105,15 @@ TEXTS = {
                 "⚠️ **Prophylaxis:** Insufficient awareness of opponent's counterplay."
             ]
         },
-        "topics": {
-            "beginner": ["avoid blunders chess beginner", "opening principles center control", "chess time management"],
-            "intermediate": ["middlegame plans chess", "pawn endgame basics", "chess strategy intermediate"],
-            "advanced": ["deep calculation chess", "rook endgame masterclass", "prophylaxis in chess"]
+        "yt_topics": {
+            "beginner": ["avoid blunders chess beginner", "opening principles center control"],
+            "intermediate": ["middlegame plans chess", "pawn endgame basics"],
+            "advanced": ["deep calculation chess", "rook endgame masterclass"]
         },
-        "articles": {
-            "beginner": [
-                {"title": "📖 Opening Principles in Chess (Chess.com)", "url": "https://www.chess.com/terms/chess-openings"},
-                {"title": "📖 Basic Checkmate Patterns Practice (Lichess)", "url": "https://lichess.org/practice/checkmates/checkmate-patterns/A8A21Maa/3_6d8dmd"}
-            ],
-            "intermediate": [
-                {"title": "📖 Middlegame Strategy Fundamentals (Chess.com)", "url": "https://www.chess.com/terms/chess-middlegame"},
-                {"title": "📖 Pawn Endgames Practice (Lichess)", "url": "https://lichess.org/practice/pawn-endgames/key-squares/L9ed4uI3/l529EawB"}
-            ],
-            "advanced": [
-                {"title": "📖 Candidate Moves & Calculation (Chess.com)", "url": "https://www.chess.com/article/view/candidate-moves-chess"},
-                {"title": "📖 Comprehensive Rook Endgames Course (Lichess Study)", "url": "https://lichess.org/study/vQWfGzO7"}
-            ]
+        "article_topics": {
+            "beginner": ["how to stop blundering chess article", "opening principles chess guide"],
+            "intermediate": ["middlegame strategy chess guide", "pawn endgame principles"],
+            "advanced": ["chess calculation candidate moves", "rook endgame strategy guide"]
         }
     },
     "pt": {
@@ -147,6 +130,7 @@ TEXTS = {
         "plan_header": "\n🎬 **Plano de Treino Personalizado (Vídeos):**\n",
         "articles_header": "\n📚 **Artigos e Guias Recomendados:**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
+        "no_articles": "*(Não foi possível carregar artigos)*",
         "levels": {
             "beginner": "Nível Iniciante",
             "intermediate": "Nível Intermédio",
@@ -169,24 +153,15 @@ TEXTS = {
                 "⚠️ **Perfilaxia:** Atenção insuficiente ao contra-jogo do adversário."
             ]
         },
-        "topics": {
-            "beginner": ["armadilhas xadrez iniciante", "principios de abertura centro xadrez", "gestao de tempo xadrez"],
-            "intermediate": ["planos meio jogo xadrez", "finais de peoes xadrez", "estrategia de xadrez"],
-            "advanced": ["calculo profundo xadrez", "finais de torres xadrez", "perfilaxia no xadrez"]
+        "yt_topics": {
+            "beginner": ["armadilhas xadrez iniciante", "principios de abertura centro xadrez"],
+            "intermediate": ["planos meio jogo xadrez", "finais de peoes xadrez"],
+            "advanced": ["calculo profundo xadrez", "finais de torres xadrez"]
         },
-        "articles": {
-            "beginner": [
-                {"title": "📖 Princípios da Abertura no Xadrez (Chess.com)", "url": "https://www.chess.com/pt-BR/terms/abertura-de-xadrez"},
-                {"title": "📖 Treino Prático de Padrões de Mate (Lichess)", "url": "https://lichess.org/practice/checkmates/checkmate-patterns/A8A21Maa/3_6d8dmd"}
-            ],
-            "intermediate": [
-                {"title": "📖 Estratégia de Meio-Jogo (Chess.com)", "url": "https://www.chess.com/pt-BR/terms/meio-jogo-xadrez"},
-                {"title": "📖 Prática de Finais de Peões (Lichess)", "url": "https://lichess.org/practice/pawn-endgames/key-squares/L9ed4uI3/l529EawB"}
-            ],
-            "advanced": [
-                {"title": "📖 Cálculo de Variantes e Lances Candidatos (Chess.com)", "url": "https://www.chess.com/pt-BR/article/view/calculo-de-variantes"},
-                {"title": "📖 Estudo Completo de Finais de Torres (Lichess)", "url": "https://lichess.org/study/vQWfGzO7"}
-            ]
+        "article_topics": {
+            "beginner": ["como evitar erros taticos xadrez artigo", "principios de abertura xadrez"],
+            "intermediate": ["estrategia meio jogo xadrez guia", "finais de peoes xadrez"],
+            "advanced": ["calculo de variantes xadrez", "finais de torres xadrez guia"]
         }
     }
 }
@@ -198,6 +173,23 @@ def set_user_setting(user_id: int, key: str, value: str):
     if user_id not in user_settings:
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
+
+# --- ДИНАМИЧЕСКИЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO ---
+def search_articles_ddg(query_topic: str, lang: str = "ru") -> list:
+    articles = []
+    try:
+        prefix = "Xadrez" if lang == "pt" else ("Chess" if lang == "en" else "Шахматы")
+        search_query = f"{prefix} {query_topic}"
+        
+        results = DDGS().text(keywords=search_query, region=f"{lang}-{lang.upper()}", max_results=1)
+        for item in results:
+            articles.append({
+                "title": item.get("title"),
+                "url": item.get("href")
+            })
+    except Exception as e:
+        print(f"Ошибка поиска DuckDuckGo: {e}")
+    return articles
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
@@ -333,16 +325,22 @@ async def analyze_player(message: types.Message):
 
     level_name = t["levels"][level_key]
     weak_points = t["weak_points"][level_key]
-    search_topics = t["topics"][level_key]
-    article_list = t["articles"][level_key]
+    yt_topics = t["yt_topics"][level_key]
+    art_topics = t["article_topics"][level_key]
 
     # Ищем видео
     all_videos = []
-    for topic in search_topics:
+    for topic in yt_topics:
         found_vids = search_youtube_videos(topic, lang=lang, max_results=1)
         all_videos.extend(found_vids)
 
-    # Формируем текст отчета
+    # Ищем статьи через DuckDuckGo
+    all_articles = []
+    for topic in art_topics:
+        found_arts = search_articles_ddg(topic, lang=lang)
+        all_articles.extend(found_arts)
+
+    # Формируем отчет
     text = t["header"].format(username=username, platform=platform_name, level=level_name, rating=current_rating)
     text += t["ratings"]
     
@@ -362,10 +360,12 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Блок прямых проверенных ссылок на статьи и интерактивные гиды
     text += t["articles_header"]
-    for idx, art in enumerate(article_list, 1):
-        text += f"{idx}. [{art['title']}]({art['url']})\n"
+    if all_articles:
+        for idx, art in enumerate(all_articles, 1):
+            text += f"{idx}. [{art['title']}]({art['url']})\n"
+    else:
+        text += t["no_articles"]
 
     await message.answer(
         text, 
@@ -374,7 +374,6 @@ async def analyze_player(message: types.Message):
         reply_markup=get_settings_keyboard(user_id)
     )
 
-# Фейковый веб-сервер для UptimeRobot / Render
 async def handle_ping(request):
     return web.Response(text="Bot is alive!")
 
