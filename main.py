@@ -84,22 +84,22 @@ LANG_DATA = {
             "undefended": {
                 "topic": "👀 **Зевки под прямой удар.** Ты периодически оставляешь фигуры без защиты или отдаешь их сопернику буквально в один ход.",
                 "task": "Перед каждым ходом задавай себе один простой вопрос: *«А куда теперь напал мой соперник?»*. Сделай паузу в 3–5 секунд перед тем, как отпустить фигуру.",
-                "yt": "как не делать зевки в шахматах"
+                "yt": "как не зевать фигуры шахматы"
             },
             "back_rank": {
                 "topic": "🚨 **Опасность на последней горизонтали.** Твой король любит сидеть в рокировке за пешками без «форточки». Чужая ладья залетает на 8-ю горизонталь — и конец.",
                 "task": "В миттельшпиле, как только позиции стабилизируются, сделай профилактический ход пешкой (`h3` или `g3`), чтобы дать королю воздуху.",
-                "yt": "мат по последней горизонтали форточка шахматы"
+                "yt": "мат на последней горизонтали шахматы"
             },
             "fork": {
                 "topic": "🐴 **Коневые вилки.** Конь соперника ходит коварно, и ты регулярно пропускаешь двойные удары на короля и ценные фигуры.",
                 "task": "Помни: конь меняет цвет поля при каждом ходе! Если твои ценные фигуры стоят на полях одного цвета — конь может поставить им вилку.",
-                "yt": "коневая вилка двойной удар шахматы"
+                "yt": "коневая вилка шахматы"
             },
             "pin": {
                 "topic": "🧲 **Пропуск связок.** Ты забываешь про фигуры, которые прикрывают короля или ферзя, и делаешь ими ход, из-за чего летит материал.",
                 "task": "Никогда не ходи связанной фигурой! Проверяй линии слонов и ладей противника перед тем, как сделать ход.",
-                "yt": "тактический прием связка рентген в шахматах"
+                "yt": "связка в шахматах"
             }
         }
     },
@@ -122,22 +122,22 @@ LANG_DATA = {
             "undefended": {
                 "topic": "👀 **Hanging Pieces.** You occasionally leave pieces undefended or give them away in a single move. Don't rush!",
                 "task": "Before every move, ask yourself one simple question: *'Where is my opponent attacking right now?'*. Pause for 3–5 seconds before moving.",
-                "yt": "how to stop hanging pieces chess"
+                "yt": "stop hanging pieces chess"
             },
             "back_rank": {
                 "topic": "🚨 **Back-Rank Vulnerability.** Your king gets trapped behind its own pawns. An opponent's rook lands on the 8th rank — game over.",
                 "task": "In the middlegame, make a prophylactic pawn move (`h3` or `g3` / `h6` or `g6`) to give your king some breathing room.",
-                "yt": "back rank mate weakness chess"
+                "yt": "back rank mate chess"
             },
             "fork": {
                 "topic": "🐴 **Knight Forks.** Opposing knights are sneaky, and you frequently miss double attacks on your king and heavy pieces.",
                 "task": "Remember: a knight changes square color with every move! Keep your valuable pieces on different colored squares.",
-                "yt": "tactics knight fork chess lesson"
+                "yt": "knight fork tactics chess"
             },
             "pin": {
                 "topic": "🧲 **Missing Pins.** You tend to move pinned pieces that are shielding your king or queen, losing material as a result.",
                 "task": "Never move a pinned piece! Always check the lines of enemy bishops and rooks before executing your move.",
-                "yt": "pin tactics chess guide"
+                "yt": "pin tactics chess"
             }
         }
     },
@@ -160,7 +160,7 @@ LANG_DATA = {
             "undefended": {
                 "topic": "👀 **Peças Penduradas.** Às vezes deixas peças sem defesa ou dás de bandeja num só lance.",
                 "task": "Antes de cada lance, faz uma pergunta simples: *'Para onde está a atacar o meu adversário?'*. Faz uma pausa de 3 a 5 segundos.",
-                "yt": "como nao pendurar pecas xadrez"
+                "yt": "peças penduradas xadrez"
             },
             "back_rank": {
                 "topic": "🚨 **Mate na Última Fileira.** O teu rei fica preso atrás dos próprios peões. Uma torre inimiga entra na 8ª fileira e é o fim.",
@@ -170,12 +170,12 @@ LANG_DATA = {
             "fork": {
                 "topic": "🐴 **Garfos de Cavalo.** O cavalo inimigo é traiçoeiro e estás a perder duplos ataques no rei e em peças valiosas.",
                 "task": "Lembra-te: o cavalo muda a cor da casa a cada lance! Mantém as tuas peças valiosas em casas de cores diferentes.",
-                "yt": "garfo de cavalo ataque duplo xadrez"
+                "yt": "garfo de cavalo xadrez"
             },
             "pin": {
                 "topic": "🧲 **Esquecimento de Cravagens.** Estás a mover peças cravadas que protegem o teu rei ou rainha.",
                 "task": "Nunca movas uma peça cravada! Verifica as linhas de bispos e torres inimigas antes de jogar.",
-                "yt": "tactica cravagem xadrez"
+                "yt": "cravagem xadrez"
             }
         }
     }
@@ -241,7 +241,6 @@ def set_user_setting(user_id: int, key: str, value: str):
     user_settings[user_id][key] = value
 
 def extract_opening_name(pgn_obj, game_raw, platform) -> str:
-    # 1. Из PGN заголовков
     if pgn_obj:
         opening_tag = pgn_obj.headers.get("Opening", "")
         if opening_tag and opening_tag != "?":
@@ -249,7 +248,6 @@ def extract_opening_name(pgn_obj, game_raw, platform) -> str:
             if "unknown" not in clean_name.lower():
                 return clean_name
 
-    # 2. Из JSON API
     if platform == "chesscom":
         eco_url = game_raw.get("eco", "")
         if eco_url:
@@ -265,7 +263,6 @@ def extract_opening_name(pgn_obj, game_raw, platform) -> str:
             if "unknown" not in clean_name.lower():
                 return clean_name
 
-    # 3. По первому ходу
     if pgn_obj:
         board = pgn_obj.board()
         moves_san = []
@@ -277,7 +274,6 @@ def extract_opening_name(pgn_obj, game_raw, platform) -> str:
             if moves_str.startswith(pattern):
                 return name
 
-    # Если не удалось распознать — возвращаем None для фильтрации
     return None
 
 def analyze_board_concepts(board: chess.Board) -> list:
@@ -347,10 +343,14 @@ async def fetch_recent_games_async(username: str, platform: str, limit: int = 15
 
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
+        print("ОШИБКА: YOUTUBE_API_KEY отсутствует!")
         return []
+    
     videos = []
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+        
+        # Первая попытка - с языковым фильтром
         request = youtube.search().list(
             q=query_topic,
             part="snippet",
@@ -359,13 +359,25 @@ def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int =
             relevanceLanguage=lang
         )
         response = request.execute()
+        
+        # Если ничего не нашли — делаем второй фоллбек-запрос без языкового фильтра
+        if not response.get("items"):
+            request = youtube.search().list(
+                q=query_topic,
+                part="snippet",
+                maxResults=max_results,
+                type="video"
+            )
+            response = request.execute()
+
         for item in response.get("items", []):
             videos.append({
                 "title": item["snippet"]["title"],
                 "url": f"https://www.youtube.com/watch?v={item['id']['videoId']}"
             })
     except Exception as e:
-        print(f"Ошибка YouTube API: {e}")
+        print(f"Ошибка YouTube API при поиске '{query_topic}': {e}")
+        
     return videos
 
 def get_settings_keyboard(user_id: int):
@@ -434,10 +446,8 @@ async def analyze_player(message: types.Message):
         pgn_text = game.get("pgn", "")
         pgn = chess.pgn.read_game(io.StringIO(pgn_text)) if pgn_text else None
         
-        # Название дебюта
         opening_name = extract_opening_name(pgn, game, platform)
         
-        # Если название не определилось — пропускаем эту партию из дебютного анализа
         if opening_name:
             is_win = False
             if platform == "chesscom":
@@ -462,7 +472,6 @@ async def analyze_player(message: types.Message):
             if is_win:
                 openings_stats[opening_name]["wins"] += 1
 
-        # Тактический разбор
         if pgn:
             moves = list(pgn.mainline_moves())
             if len(moves) > 10:
@@ -484,7 +493,7 @@ async def analyze_player(message: types.Message):
     topics_dict = t.get("topics", LANG_DATA["ru"]["topics"])
     for key in detected_keys:
         topic_info = topics_dict.get(key, topics_dict.get("undefended"))
-        yt_query = topic_info.get("yt", "chess tactics")
+        yt_query = topic_info.get("yt", "шахматы тактика")
         vids = search_youtube_videos(yt_query, lang=lang, max_results=1)
         tactics_videos.extend(vids)
 
@@ -510,14 +519,20 @@ async def analyze_player(message: types.Message):
             worst_winrate = int((worst[1]["wins"] / worst[1]["total"]) * 100) if worst[1]["total"] > 0 else 0
             text += t["best_opening"].format(opening=best[0], winrate=best_winrate)
             text += t["worst_opening"].format(opening=worst[0], winrate=worst_winrate)
-            target_opening_for_video = worst[0] # Берем худший дебют для уроков
+            target_opening_for_video = worst[0]
         else:
             text += t["single_opening"].format(opening=best[0], winrate=best_winrate)
             target_opening_for_video = best[0]
 
-    # 2. Видео по Дебюту (1-2 видео)
+    # 2. Видео по Дебюту (Упрощенный и надежный запрос)
     if target_opening_for_video:
-        opening_query = f"{target_opening_for_video} шахматы ловушки разбор" if lang == "ru" else f"{target_opening_for_video} chess guide opening"
+        if lang == "ru":
+            opening_query = f"{target_opening_for_video} шахматы"
+        elif lang == "pt":
+            opening_query = f"{target_opening_for_video} xadrez"
+        else:
+            opening_query = f"{target_opening_for_video} chess"
+            
         opening_vids = search_youtube_videos(opening_query, lang=lang, max_results=2)
         if opening_vids:
             text += t["opening_videos_header"].format(opening=target_opening_for_video)
