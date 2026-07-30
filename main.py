@@ -30,7 +30,8 @@ TEXTS = {
         "no_games": "📊 Игрок **{username}** найден, но у него нет сыгранных партий.",
         "header": "📊 **КОНКРЕТНЫЙ AI-АНАЛИЗ ОШИБОК ({count} ПАРТИЙ)**\nИгрок: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Выявленные точечные проблемы и темы для проработки:**\n",
-        "plan_header": "\n🎬 **Рекомендованные видео-уроки по твоим темам:**\n",
+        "plan_header": "\n🎬 **Рекомендованные видео-уроки:**\n",
+        "trainers_header": "\n🧩 **Интерактивные тренажеры для смартфона:**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
     },
     "en": {
@@ -40,7 +41,8 @@ TEXTS = {
         "no_games": "📊 Player **{username}** found, but has no recent games.",
         "header": "📊 **SPECIFIC AI ERROR ANALYSIS ({count} GAMES)**\nPlayer: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Identified Specific Topics to Improve:**\n",
-        "plan_header": "\n🎬 **Recommended Video Lessons for You:**\n",
+        "plan_header": "\n🎬 **Recommended Video Lessons:**\n",
+        "trainers_header": "\n🧩 **Interactive Mobile Practice Trainers:**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
     },
     "pt": {
@@ -50,8 +52,33 @@ TEXTS = {
         "no_games": "📊 Jogador **{username}** encontrado, mas sem partidas recentes.",
         "header": "📊 **ANÁLISE DE ERROS ESPECÍFICOS COM IA ({count} PARTIDAS)**\nJogador: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Tópicos Específicos Identificados para Melhorar:**\n",
-        "plan_header": "\n🎬 **Vídeo-Aulas Recomendadas sobre os Seus Erros:**\n",
+        "plan_header": "\n🎬 **Vídeo-Aulas Recomendadas:**\n",
+        "trainers_header": "\n🧩 **Treinadores Interativos para Telemóvel:**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
+    }
+}
+
+# --- БАЗА ИНТЕРАКТИВНЫХ МОБИЛЬНЫХ ТРЕНАЖЕРОВ ---
+TRAINER_DATABASE = {
+    "undefended": {
+        "title": "⚡ **Тренажер: Борьба с зевками и зависающими фигурами**",
+        "url": "https://lichess.org/practice/basic-tactics/hanging-pieces/9P1c8e7A"
+    },
+    "back_rank": {
+        "title": "🧱 **Тренажер: Мат по 8-й горизонтали и завлечение**",
+        "url": "https://lichess.org/practice/checkmates/checkmate-patterns/28e5a720"
+    },
+    "fork": {
+        "title": "🐴 **Тренажер: Коневые вилки и двойные удары**",
+        "url": "https://lichess.org/practice/basic-tactics/knight-fork/O3f7WfT4"
+    },
+    "pin": {
+        "title": "🧲 **Тренажер: Связки и рентгены**",
+        "url": "https://lichess.org/practice/basic-tactics/the-pin/84zK4b2Q"
+    },
+    "endgame": {
+        "title": "♔ **Тренажер: Базовые эндшпили (Ладейники и пешники)**",
+        "url": "https://lichess.org/practice/pawn-endgames/key-squares/L28m7Z9Q"
     }
 }
 
@@ -63,7 +90,6 @@ def set_user_setting(user_id: int, key: str, value: str):
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
 
-# --- ДЕТЕКТОР ОШИБОК ---
 def analyze_board_concepts(board: chess.Board) -> list:
     detected = []
 
@@ -76,6 +102,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 undefended += 1
     if undefended >= 1:
         detected.append({
+            "key": "undefended",
             "topic": "🎯 **Зависающие фигуры:** Оставление фигур под ударом без защиты (зевки).",
             "query": "как не делать зевки в шахматах"
         })
@@ -85,6 +112,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
         if board.king(color) in [chess.G1, chess.H1, chess.G8, chess.H8]:
             if sum(1 for sq in sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color)) == 3:
                 detected.append({
+                    "key": "back_rank",
                     "topic": "🎯 **Безопасность короля:** Слабость 8-й горизонтали и отсутствие «форточки».",
                     "query": "мат по последней горизонтали форточка шахматы"
                 })
@@ -102,12 +130,14 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 break
     if has_fork_risk:
         detected.append({
+            "key": "fork",
             "topic": "🎯 **Коневые вилки:** Пропуск двойных ударов конем.",
             "query": "коневая вилка двойной удар шахматы"
         })
 
     # 4. Связка и рентген
     detected.append({
+        "key": "pin",
         "topic": "🎯 **Связки и рентгены:** Защита фигур, стоящих на одной линии.",
         "query": "тактический прием связка рентген в шахматах"
     })
@@ -146,7 +176,6 @@ async def fetch_recent_games_async(username: str, platform: str, limit: int = 10
         
     return games
 
-# --- ПОИСК ВИДЕО НА YOUTUBE ---
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 2) -> list:
     if not YOUTUBE_API_KEY:
         return []
@@ -229,6 +258,7 @@ async def analyze_player(message: types.Message):
 
     detected_issues = []
     yt_queries = []
+    trainer_keys = []
 
     for game in games:
         pgn_text = game.get("pgn", "")
@@ -246,12 +276,12 @@ async def analyze_player(message: types.Message):
                         if item["topic"] not in detected_issues:
                             detected_issues.append(item["topic"])
                             yt_queries.append(item["query"])
+                            trainer_keys.append(item["key"])
 
-    # Ограничиваем список до 3 ключевых тем
     detected_issues = detected_issues[:3]
     yt_queries = yt_queries[:3]
+    trainer_keys = trainer_keys[:3]
 
-    # Запасной вариант при отсутствии явных проблем
     if not detected_issues:
         detected_issues = [
             "🎯 **Расчет вариантов:** Предупреждение зевков и точный выбор ходов.",
@@ -261,8 +291,13 @@ async def analyze_player(message: types.Message):
             "как не делать зевки в шахматах",
             "тактический прием связка рентген в шахматах"
         ]
+        trainer_keys = ["undefended", "pin"]
 
-    # Собираем от 3 до 5 видеоуроков (по 2 видео на тему)
+    # Добавляем универсальный тренажер по эндшпилю
+    if "endgame" not in trainer_keys:
+        trainer_keys.append("endgame")
+
+    # Собираем видео
     all_videos = []
     for q in yt_queries:
         vids = search_youtube_videos(q, lang=lang, max_results=2)
@@ -270,9 +305,9 @@ async def analyze_player(message: types.Message):
             if not any(existing['url'] == v['url'] for existing in all_videos):
                 all_videos.append(v)
 
-    # Итоговая выдача 3–5 роликов
     all_videos = all_videos[:5]
 
+    # Формируем текст
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
     for issue in detected_issues:
@@ -284,6 +319,13 @@ async def analyze_player(message: types.Message):
             text += f"{idx}. [{vid['title']}]({vid['url']})\n"
     else:
         text += t["no_videos"]
+
+    # Добавляем тренажеры
+    text += t["trainers_header"]
+    for key in trainer_keys:
+        if key in TRAINER_DATABASE:
+            tr = TRAINER_DATABASE[key]
+            text += f"• [{tr['title']}]({tr['url']})\n"
 
     await message.answer(
         text, 
