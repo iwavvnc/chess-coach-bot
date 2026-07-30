@@ -6,7 +6,6 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiohttp import web
 from googleapiclient.discovery import build
-from ddgs import DDGS
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -31,10 +30,8 @@ TEXTS = {
         "blitz": "• Блиц: **{rating} ELO**\n",
         "bullet": "• Пуля: **{rating} ELO**\n\n",
         "weak_header": "🔍 **Выявленные слабые места в игре:**\n",
-        "plan_header": "\n🎬 **Персональный учебный план (Видео):**\n",
-        "articles_header": "\n📚 **Рекомендованные статьи и гайды:**\n",
+        "plan_header": "\n🎬 **Персональный учебный план (Видео-уроки):**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
-        "no_articles": "*(Не удалось найти статьи)*",
         "levels": {
             "beginner": "Начинающий уровень",
             "intermediate": "Любительский уровень",
@@ -58,14 +55,9 @@ TEXTS = {
             ]
         },
         "yt_topics": {
-            "beginner": ["базовые зевы фигуры", "основы дебюта контроль центра"],
-            "intermediate": ["типовые планы в миттельшпиле", "основы пешечных окончаний"],
-            "advanced": ["глубокий расчет вариантов", "ладейные окончания продвинутый"]
-        },
-        "article_topics": {
-            "beginner": ["как перестать зевать фигуры в шахматах", "принципы шахматного дебюта"],
-            "intermediate": ["стратегия миттельшпиля в шахматах", "пешечные окончания руководство"],
-            "advanced": ["расчет вариантов в шахматах кандидатные ходы", "сложные ладейные окончания"]
+            "beginner": ["базовые зевы фигуры шахматы", "основы дебюта контроль центра шахматы"],
+            "intermediate": ["типовые планы в миттельшпиле шахматы", "основы пешечных окончаний шахматы"],
+            "advanced": ["глубокий расчет вариантов шахматы", "ладейные окончания мастер класс шахматы"]
         }
     },
     "en": {
@@ -79,10 +71,8 @@ TEXTS = {
         "blitz": "• Blitz: **{rating} ELO**\n",
         "bullet": "• Bullet: **{rating} ELO**\n\n",
         "weak_header": "🔍 **Identified Weaknesses:**\n",
-        "plan_header": "\n🎬 **Personal Training Plan (Videos):**\n",
-        "articles_header": "\n📚 **Recommended Articles & Guides:**\n",
+        "plan_header": "\n🎬 **Personal Training Plan (Video Lessons):**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
-        "no_articles": "*(Failed to load articles)*",
         "levels": {
             "beginner": "Beginner Level",
             "intermediate": "Intermediate Level",
@@ -106,14 +96,9 @@ TEXTS = {
             ]
         },
         "yt_topics": {
-            "beginner": ["avoid blunders chess beginner", "opening principles center control"],
-            "intermediate": ["middlegame plans chess", "pawn endgame basics"],
-            "advanced": ["deep calculation chess", "rook endgame masterclass"]
-        },
-        "article_topics": {
-            "beginner": ["how to stop blundering chess article", "opening principles chess guide"],
-            "intermediate": ["middlegame strategy chess guide", "pawn endgame principles"],
-            "advanced": ["chess calculation candidate moves", "rook endgame strategy guide"]
+            "beginner": ["avoid blunders chess beginner", "opening principles center control chess"],
+            "intermediate": ["middlegame plans chess guide", "pawn endgame basics chess"],
+            "advanced": ["deep calculation chess grandmaster", "rook endgame masterclass chess"]
         }
     },
     "pt": {
@@ -127,10 +112,8 @@ TEXTS = {
         "blitz": "• Blitz: **{rating} ELO**\n",
         "bullet": "• Bullet: **{rating} ELO**\n\n",
         "weak_header": "🔍 **Pontos Fracos Identificados:**\n",
-        "plan_header": "\n🎬 **Plano de Treino Personalizado (Vídeos):**\n",
-        "articles_header": "\n📚 **Artigos e Guias Recomendados:**\n",
+        "plan_header": "\n🎬 **Plano de Treino Personalizado (Vídeo-Aulas):**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
-        "no_articles": "*(Não foi possível carregar artigos)*",
         "levels": {
             "beginner": "Nível Iniciante",
             "intermediate": "Nível Intermédio",
@@ -154,14 +137,9 @@ TEXTS = {
             ]
         },
         "yt_topics": {
-            "beginner": ["armadilhas xadrez iniciante", "principios de abertura centro xadrez"],
+            "beginner": ["como nao pendurar pecas xadrez", "principios de abertura centro xadrez"],
             "intermediate": ["planos meio jogo xadrez", "finais de peoes xadrez"],
-            "advanced": ["calculo profundo xadrez", "finais de torres xadrez"]
-        },
-        "article_topics": {
-            "beginner": ["como evitar erros taticos xadrez artigo", "principios de abertura xadrez"],
-            "intermediate": ["estrategia meio jogo xadrez guia", "finais de peoes xadrez"],
-            "advanced": ["calculo de variantes xadrez", "finais de torres xadrez guia"]
+            "advanced": ["calculo de variantes xadrez", "finais de torres xadrez"]
         }
     }
 }
@@ -174,69 +152,14 @@ def set_user_setting(user_id: int, key: str, value: str):
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
 
-import urllib.parse
-import re
-
-# --- НАДЕЖНЫЙ ЖИВОЙ ПОИСК СТАТЕЙ ЧЕРЕЗ DUCKDUCKGO HTML ---
-def search_articles_ddg(query_topic: str, lang: str = "ru") -> list:
-    articles = []
-    try:
-        prefix = "Xadrez" if lang == "pt" else ("Chess" if lang == "en" else "Шахматы")
-        search_query = f"{prefix} {query_topic}"
-        encoded_query = urllib.parse.quote(search_query)
-        
-        # Запрос к официальной легкой HTML-версии DuckDuckGo
-        url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        
-        response = requests.get(url, headers=headers, timeout=5)
-        
-        if response.status_code == 200:
-            # Находим заголовки и ссылки в HTML
-            # Ищем ссылки с классом result__a
-            pattern = r'<a class="result__a" href="([^"]+)">(.*?)</a>'
-            matches = re.findall(pattern, response.text)
-            
-            for href, raw_title in matches[:1]: # Берем 1 лучшую статью
-                # Очищаем заголовок от HTML-тегов
-                clean_title = re.sub(r'<[^>]+>', '', raw_title).strip()
-                
-                # Извлекаем настоящий URL из перенаправления DuckDuckGo
-                parsed_url = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
-                real_url = parsed_url.get('uddg', [href])[0]
-                
-                if real_url and clean_title:
-                    articles.append({
-                        "title": clean_title,
-                        "url": real_url
-                    })
-    except Exception as e:
-        print(f"Ошибка живого поиска статей: {e}")
-
-    # Если поисковик временно недоступен — даем заведомо рабочую страницу разделов Lichess/Chess.com
-    if not articles:
-        fallback_sites = {
-            "ru": {"title": f"📖 Уроки и статьи по теме: {query_topic.capitalize()}", "url": "https://lichess.org/practice"},
-            "en": {"title": f"📖 Guides & Lessons: {query_topic.capitalize()}", "url": "https://lichess.org/practice"},
-            "pt": {"title": f"📖 Guias e Treino: {query_topic.capitalize()}", "url": "https://lichess.org/practice"}
-        }
-        articles.append(fallback_sites.get(lang, fallback_sites["ru"]))
-
-    return articles
-
 def search_youtube_videos(query_topic: str, lang: str = "ru", max_results: int = 1) -> list:
     if not YOUTUBE_API_KEY:
         return []
     videos = []
     try:
         youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-        prefix = "Xadrez" if lang == "pt" else ("Chess" if lang == "en" else "Шахматы")
-        search_query = f"{prefix} {query_topic}"
-        
         request = youtube.search().list(
-            q=search_query,
+            q=query_topic,
             part="snippet",
             maxResults=max_results,
             type="video",
@@ -361,21 +284,14 @@ async def analyze_player(message: types.Message):
     level_name = t["levels"][level_key]
     weak_points = t["weak_points"][level_key]
     yt_topics = t["yt_topics"][level_key]
-    art_topics = t["article_topics"][level_key]
 
-    # Ищем видео
+    # Ищем обучающие видео через YouTube API
     all_videos = []
     for topic in yt_topics:
         found_vids = search_youtube_videos(topic, lang=lang, max_results=1)
         all_videos.extend(found_vids)
 
-    # Ищем статьи через DuckDuckGo
-    all_articles = []
-    for topic in art_topics:
-        found_arts = search_articles_ddg(topic, lang=lang)
-        all_articles.extend(found_arts)
-
-    # Формируем отчет
+    # Формируем аккуратный и лаконичный отчёт
     text = t["header"].format(username=username, platform=platform_name, level=level_name, rating=current_rating)
     text += t["ratings"]
     
@@ -394,13 +310,6 @@ async def analyze_player(message: types.Message):
             text += f"{idx}. [{vid['title']}]({vid['url']})\n"
     else:
         text += t["no_videos"]
-
-    text += t["articles_header"]
-    if all_articles:
-        for idx, art in enumerate(all_articles, 1):
-            text += f"{idx}. [{art['title']}]({art['url']})\n"
-    else:
-        text += t["no_articles"]
 
     await message.answer(
         text, 
