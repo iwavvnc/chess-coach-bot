@@ -31,7 +31,7 @@ TEXTS = {
         "header": "📊 **КОНКРЕТНЫЙ AI-АНАЛИЗ ОШИБОК ({count} ПАРТИЙ)**\nИгрок: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Выявленные точечные проблемы и темы для проработки:**\n",
         "plan_header": "\n🎬 **Рекомендованные видео-уроки:**\n",
-        "trainers_header": "\n🧩 **Интерактивные тренажеры для смартфона ({platform}):**\n",
+        "trainers_header": "\n🧩 **Практические задания в приложении ({platform}):**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
     },
     "en": {
@@ -42,7 +42,7 @@ TEXTS = {
         "header": "📊 **SPECIFIC AI ERROR ANALYSIS ({count} GAMES)**\nPlayer: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Identified Specific Topics to Improve:**\n",
         "plan_header": "\n🎬 **Recommended Video Lessons:**\n",
-        "trainers_header": "\n🧩 **Interactive Mobile Practice Trainers ({platform}):**\n",
+        "trainers_header": "\n🧩 **Practical Tasks in Application ({platform}):**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
     },
     "pt": {
@@ -53,56 +53,26 @@ TEXTS = {
         "header": "📊 **ANÁLISE DE ERROS ESPECÍFICOS COM IA ({count} PARTIDAS)**\nJogador: `{username}` ({platform})\n\n",
         "weak_header": "🎯 **Tópicos Específicos Identificados para Melhorar:**\n",
         "plan_header": "\n🎬 **Vídeo-Aulas Recomendadas:**\n",
-        "trainers_header": "\n🧩 **Treinadores Interativos para Telemóvel ({platform}):**\n",
+        "trainers_header": "\n🧩 **Tarefas Práticas na Aplicação ({platform}):**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
     }
 }
 
-# --- ИСПРАВЛЕННЫЕ И ПРОВЕРЕННЫЕ ССЫЛКИ ДЛЯ ОБЕИХ ПЛАТФОРМ ---
+# --- ПОДОБРАННЫЕ ТЕКСТОВЫЕ РЕКОМЕНДАЦИИ ПО ПЛАТФОРМАМ ---
 TRAINER_DATABASE = {
     "lichess": {
-        "undefended": {
-            "title": "⚡ Lichess: Борьба с зевками (Hanging Pieces)",
-            "url": "https://lichess.org/practice/basic-tactics/hanging-pieces/R8a9W4G2"
-        },
-        "back_rank": {
-            "title": "🧱 Lichess: Мат на 8-й горизонтали",
-            "url": "https://lichess.org/practice/checkmates/checkmate-patterns/D3yF7H1R"
-        },
-        "fork": {
-            "title": "🐴 Lichess: Коневые вилки",
-            "url": "https://lichess.org/practice/basic-tactics/knight-fork/rZ6vT8cM"
-        },
-        "pin": {
-            "title": "🧲 Lichess: Связка и рентген",
-            "url": "https://lichess.org/practice/basic-tactics/the-pin/B8b3Z7nK"
-        },
-        "endgame": {
-            "title": "♔ Lichess: Пешечный эндшпиль",
-            "url": "https://lichess.org/practice/pawn-endgames/key-squares/E7x1Q0W9"
-        }
+        "undefended": "⚡ **Зависающие фигуры:** Зайди в `Обучение` ➔ `Практика` ➔ пройди модуль **«Hanging pieces»** (Незащищенные фигуры).",
+        "back_rank": "🧱 **Мат на 8-й горизонтали:** Зайди в `Задачи` ➔ `Темы задач` ➔ выбери категорию **«Мат на последней горизонтали»**.",
+        "fork": "🐴 **Коневые вилки:** Открой `Обучение` ➔ `Практика` ➔ пройди модуль **«Knight Fork»**.",
+        "pin": "🧲 **Связка и рентген:** Открой `Обучение` ➔ `Практика` ➔ пройди модуль **«The Pin»** (Связка).",
+        "endgame": "♔ **Эндшпиль:** Открой `Обучение` ➔ `Практика` ➔ выбери **«Пешечные окончания»** (Ключевые поля)."
     },
     "chesscom": {
-        "undefended": {
-            "title": "⚡ Chess.com: Интерактивное решение задач",
-            "url": "https://www.chess.com/puzzles"
-        },
-        "back_rank": {
-            "title": "🧱 Chess.com: Задачи на штурм короля",
-            "url": "https://www.chess.com/puzzles/rush"
-        },
-        "fork": {
-            "title": "🐴 Chess.com: Тренировка видения доски и вилок",
-            "url": "https://www.chess.com/vision"
-        },
-        "pin": {
-            "title": "🧲 Chess.com: Тактический тренажер",
-            "url": "https://www.chess.com/puzzles/rated"
-        },
-        "endgame": {
-            "title": "♔ Chess.com: Тренировка эндшпиля (Drills)",
-            "url": "https://www.chess.com/drills"
-        }
+        "undefended": "⚡ **Зевки и расчет:** Открой `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Незащищенная фигура»** (Hanging Piece).",
+        "back_rank": "🧱 **Мат на 8-й горизонтали:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Слабость последней горизонтали»**.",
+        "fork": "🐴 **Коневые вилки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Двойной удар / Вилка»**.",
+        "pin": "🧲 **Связки:** Зайди в `Задачи` ➔ `Настраиваемые задачи` ➔ выбери тег **«Связка (Pin)»**.",
+        "endgame": "♔ **Эндшпиль:** Перейди в раздел `Обучение` ➔ `Тренировка (Drills)` ➔ порешай позиции **Ладейные/Пешечные окончания** против бота."
     }
 }
 
@@ -142,7 +112,7 @@ def analyze_board_concepts(board: chess.Board) -> list:
                 })
                 break
 
-    # 3. Вилки
+    # 3. Коневые вилки
     has_fork_risk = False
     for sq in chess.SQUARES:
         p = board.piece_at(sq)
@@ -266,7 +236,6 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
 @dp.message()
 async def analyze_player(message: types.Message):
     user_id = message.from_user.id
-    # Забираем актуальную платформу ПОЛЬЗОВАТЕЛЯ
     platform = get_user_setting(user_id, "platform", "chesscom")
     lang = get_user_setting(user_id, "lang", "ru")
     t = TEXTS.get(lang, TEXTS["ru"])
@@ -321,7 +290,7 @@ async def analyze_player(message: types.Message):
     if "endgame" not in trainer_keys:
         trainer_keys.append("endgame")
 
-    # Поиск роликов на YouTube
+    # YouTube ролики
     all_videos = []
     for q in yt_queries:
         vids = search_youtube_videos(q, lang=lang, max_results=2)
@@ -331,7 +300,7 @@ async def analyze_player(message: types.Message):
 
     all_videos = all_videos[:5]
 
-    # Сборка финального отчета
+    # Формируем отчет
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
     for issue in detected_issues:
@@ -344,14 +313,13 @@ async def analyze_player(message: types.Message):
     else:
         text += t["no_videos"]
 
-    # Выборка ТРЕНАЖЕРОВ СТРОГО под платформу пользователя
+    # Формируем точные текстовые инструкции для практических занятий
     text += t["trainers_header"].format(platform=platform_name)
     plat_trainers = TRAINER_DATABASE.get(platform, TRAINER_DATABASE["chesscom"])
     
     for key in trainer_keys:
         if key in plat_trainers:
-            tr = plat_trainers[key]
-            text += f"• [{tr['title']}]({tr['url']})\n"
+            text += f"• {plat_trainers[key]}\n"
 
     await message.answer(
         text, 
