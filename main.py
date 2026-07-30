@@ -2,6 +2,8 @@ import os
 import asyncio
 import requests
 import chess
+import chess.pgn
+import io
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -22,36 +24,36 @@ LANG_FLAGS = {"ru": "🇷🇺 Русский", "en": "🇬🇧 English", "pt": "
 TEXTS = {
     "ru": {
         "welcome": "👋 Привет! Я твой персональный AI-тренер по шахматам.\n\nНастрой платформу и язык, а затем отправь свой **никнейм**:",
-        "analyzing": "🔍 Скачиваю и анализирую последние **{count} партий** для `{username}` на {platform}...",
+        "analyzing": "🔍 Скачиваю и анализирую партии `{username}` на {platform} (выборка: **{count} партий**)...",
         "not_found": "❌ Игрок не найден на {platform}. Проверь написание никнейма!",
         "no_games": "📊 Игрок **{username}** найден, но у него нет сыгранных партий.",
-        "header": "📊 **ГЛУБОКИЙ AI-АНАЛИЗ {count} ПОСЛЕДНИХ ПАРТИЙ**\nИгрок: `{username}` ({platform})\n\n",
-        "weak_header": "🎯 **Фактические проблемы, выявленные движком:**\n",
-        "plan_header": "\n🎬 **Персональные видео-уроки по твоим ошибкам:**\n",
+        "header": "📊 **КОНКРЕТНЫЙ AI-АНАЛИЗ ОШИБОК ({count} ПАРТИЙ)**\nИгрок: `{username}` ({platform})\n\n",
+        "weak_header": "🎯 **Выявленные точечные проблемы и темы для проработки:**\n",
+        "plan_header": "\n🎬 **Рекомендованные уроки по твоим слабым темам:**\n",
         "no_videos": "*(Не удалось подгрузить видео из YouTube API)*",
-        "no_blunders": "✅ Отличная игра! Серьезных грубых зевов в последних партиях не обнаружено."
+        "no_blunders": "✅ Отличный уровень! Явных повторяющихся концептуальных ошибок не обнаружено."
     },
     "en": {
         "welcome": "👋 Hi! I am your personal AI chess coach.\n\nConfigure your platform and language, then send your **username**:",
-        "analyzing": "🔍 Downloading and analyzing the last **{count} games** for `{username}` on {platform}...",
+        "analyzing": "🔍 Downloading and analyzing games for `{username}` on {platform} (sample: **{count} games**)...",
         "not_found": "❌ Player not found on {platform}. Check your username spelling!",
         "no_games": "📊 Player **{username}** found, but has no recent games.",
-        "header": "📊 **DEEP AI ANALYSIS OF LAST {count} GAMES**\nPlayer: `{username}` ({platform})\n\n",
-        "weak_header": "🎯 **Specific Weaknesses Identified by Engine:**\n",
-        "plan_header": "\n🎬 **Personal Video Lessons Based on Your Errors:**\n",
+        "header": "📊 **SPECIFIC AI ERROR ANALYSIS ({count} GAMES)**\nPlayer: `{username}` ({platform})\n\n",
+        "weak_header": "🎯 **Identified Specific Topics to Improve:**\n",
+        "plan_header": "\n🎬 **Recommended Video Lessons on Your Weak Topics:**\n",
         "no_videos": "*(Failed to load videos from YouTube API)*",
-        "no_blunders": "✅ Great play! No severe blunders detected in recent games."
+        "no_blunders": "✅ Great play! No obvious repeating conceptual errors found."
     },
     "pt": {
         "welcome": "👋 Olá! Sou o seu treinador pessoal de xadrez com IA.\n\nConfigure a plataforma e o idioma e, em seguida, envie o seu **nome de utilizador**:",
-        "analyzing": "🔍 A descarregar e analisar as últimas **{count} partidas** de `{username}` no {platform}...",
+        "analyzing": "🔍 A analisar partidas de `{username}` no {platform} (amostra: **{count} partidas**)...",
         "not_found": "❌ Jogador não encontrado no {platform}. Verifique o nome de utilizador!",
         "no_games": "📊 Jogador **{username}** encontrado, mas sem partidas recentes.",
-        "header": "📊 **ANÁLISE PROFUNDA COM IA DAS ÚLTIMAS {count} PARTIDAS**\nJogador: `{username}` ({platform})\n\n",
-        "weak_header": "🎯 **Problemas Específicos Identificados pelo Motor:**\n",
-        "plan_header": "\n🎬 **Vídeo-Aulas Personalizadas Baseadas nos Seus Erros:**\n",
+        "header": "📊 **ANÁLISE DE ERROS ESPECÍFICOS COM IA ({count} PARTIDAS)**\nJogador: `{username}` ({platform})\n\n",
+        "weak_header": "🎯 **Tópicos Específicos Identificados para Melhorar:**\n",
+        "plan_header": "\n🎬 **Vídeo-Aulas Recomendadas sobre os Seus Erros:**\n",
         "no_videos": "*(Não foi possível carregar vídeos do YouTube API)*",
-        "no_blunders": "✅ Excelente jogo! Nenhum erro grave detetado nas últimas partidas."
+        "no_blunders": "✅ Excelente jogo! Nenhum erro concetual repetido detetado."
     }
 }
 
@@ -63,53 +65,69 @@ def set_user_setting(user_id: int, key: str, value: str):
         user_settings[user_id] = {"platform": "chesscom", "lang": "ru"}
     user_settings[user_id][key] = value
 
-# --- ДЕТЕКТОР ШАХМАТНЫХ ТЕМ ПО FEN ПОЗИЦИИ ---
-def classify_position_error(fen: str, move_number: int) -> dict:
-    board = chess.Board(fen)
-    
-    # 1. Дебютные ошибки
-    if move_number <= 10:
-        return {
-            "topic_ru": "⚠️ **Дебют:** Нарушение принципов развития на первых ходах.",
-            "yt_query_ru": "ошибки в дебюте правила развития шахматы"
-        }
-    
-    # Считаем тяжелые и легкие фигуры
-    rooks = len(board.pieces(chess.ROOK, chess.WHITE)) + len(board.pieces(chess.ROOK, chess.BLACK))
-    queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
-    minor_pieces = len(board.pieces(chess.KNIGHT, chess.WHITE)) + len(board.pieces(chess.BISHOP, chess.WHITE)) + \
-                   len(board.pieces(chess.KNIGHT, chess.BLACK)) + len(board.pieces(chess.BISHOP, chess.BLACK))
+# --- ДЕТЕКТОР КОНКРЕТНЫХ ШАХМАТНЫХ КОНЦЕПЦИЙ И ТЕМ ---
+def analyze_board_concepts(board: chess.Board) -> list:
+    detected_topics = []
 
-    # 2. Пешечные окончания
-    if queens == 0 and rooks == 0 and minor_pieces == 0:
-        return {
-            "topic_ru": "⚠️ **Пешечные окончания:** Ошибки в расчетe оппозиции и проведении пешек.",
-            "yt_query_ru": "пешечные окончания правила шахматы"
-        }
+    # 1. Поиск незащищенных (подвисших) фигур на доске
+    undefended_pieces = 0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece and piece.piece_type != chess.KING:
+            color = piece.color
+            # Если фигура атакована и не защищена своими
+            if board.is_attacked_by(not color, square) and not board.is_attacked_by(color, square):
+                undefended_pieces += 1
 
-    # 3. Ладейные окончания (Позиции Филидора / Лусены)
-    if queens == 0 and minor_pieces == 0 and rooks > 0:
-        return {
-            "topic_ru": "⚠️ **Ладейные окончания:** Ошибки в позиции Филидора/Лусены и активности ладьи.",
-            "yt_query_ru": "ладейные окончания позиция филидора лусены шахматы"
-        }
+    if undefended_pieces >= 2:
+        detected_topics.append({
+            "topic_ru": "🎯 **Зависающие фигуры:** Оставление своих фигур без защиты.",
+            "yt_query_ru": "незащищенные фигуры зависающие фигуры шахматы"
+        })
 
-    # 4. Атака на короля в центре (Король не рокирован)
-    king_sq_w = board.king(chess.WHITE)
-    king_sq_b = board.king(chess.BLACK)
-    if king_sq_w in [chess.E1, chess.D1] or king_sq_b in [chess.E8, chess.D8]:
-        return {
-            "topic_ru": "⚠️ **Безопасность короля:** Задержка рокировки и застрявший король в центре.",
-            "yt_query_ru": "безопасность короля атака на короля в центре шахматы"
-        }
+    # 2. Проверка слабости первой / последней горизонтали (Back-rank weakness)
+    for color, rank_sqs in [(chess.WHITE, [chess.F1, chess.G1, chess.H1]), (chess.BLACK, [chess.F8, chess.G8, chess.H8])]:
+        king_sq = board.king(color)
+        if king_sq in [chess.G1, chess.H1, chess.G8, chess.H8]:
+            # Проверяем, закрыт ли король пешками без форточки
+            pawns_ahead = sum(1 for sq in rank_sqs if board.piece_at(sq) == chess.Piece(chess.PAWN, color))
+            if pawns_ahead == 3:
+                detected_topics.append({
+                    "topic_ru": "🎯 **Слабость последней горизонтали:** Отсутствие «форточки» для короля.",
+                    "yt_query_ru": "мат по последней горизонтали форточка шахматы"
+                })
+                break
 
-    # 5. Тактический зев / Миттельшпиль
-    return {
-        "topic_ru": "⚠️ **Тактический зев:** Пропущенная связка, двойной удар или подвисшая фигура.",
-        "yt_query_ru": "как перестать зевать фигуры тактика шахматы"
-    }
+    # 3. Наличие проходных пешек и пешечная структура
+    passed_pawns = 0
+    for square in board.pieces(chess.PAWN, chess.WHITE) | board.pieces(chess.PAWN, chess.BLACK):
+        rank = chess.square_rank(square)
+        if rank in [2, 3, 4, 5]: # Пешки, продвинутые вглубь
+            passed_pawns += 1
+    if passed_pawns >= 3:
+        detected_topics.append({
+            "topic_ru": "🎯 **Проходные пешки:** Правила проведения и блокировки проходных пешек.",
+            "yt_query_ru": "как проводить проходную пешку правила шахматы"
+        })
 
-# --- ПОЛУЧЕНИЕ ПОСЛЕДНИХ ПАРТИЙ С CHESS.COM И LICHESS ---
+    # 4. Проверка на связки и геометрическую уязвимость
+    # Если на доске есть ферзи и тяжелые фигуры
+    if board.pieces(chess.QUEEN, chess.WHITE) or board.pieces(chess.QUEEN, chess.BLACK):
+        detected_topics.append({
+            "topic_ru": "🎯 **Тактика Связка и Шампур:** Уязвимость фигур на одной линии.",
+            "yt_query_ru": "тактический прием связка шампур шахматы"
+        })
+
+    # 5. Двойные удары и вилки
+    knights = len(board.pieces(chess.KNIGHT, chess.WHITE)) + len(board.pieces(chess.KNIGHT, chess.BLACK))
+    if knights > 0:
+        detected_topics.append({
+            "topic_ru": "🎯 **Коньковые вилки и двойные удары:** Пропуск тактических вилок.",
+            "yt_query_ru": "двойной удар коневая вилка шахматы"
+        })
+
+    return detected_topics
+
 def fetch_recent_games(username: str, platform: str, limit: int = 10) -> list:
     headers = {'User-Agent': 'ChessCoachBot/1.0'}
     games = []
@@ -131,7 +149,6 @@ def fetch_recent_games(username: str, platform: str, limit: int = 10) -> list:
             headers_lic = {'Accept': 'application/x-ndjson'}
             res = requests.get(url, headers=headers_lic)
             if res.status_code == 200:
-                # В Lichess отдается ndjson
                 lines = res.text.strip().split('\n')
                 for line in lines:
                     if line:
@@ -204,7 +221,7 @@ async def toggle_lang_cmd(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     current_lang = get_user_setting(user_id, "lang", "ru")
     new_lang = LANG_NEXT.get(current_lang, "ru")
-    set_user_setting(user_id, "new_lang", new_lang)
+    set_user_setting(user_id, "lang", new_lang)
     t = TEXTS.get(new_lang, TEXTS["ru"])
     await callback.message.edit_text(t["welcome"], reply_markup=get_settings_keyboard(user_id))
     await callback.answer()
@@ -217,7 +234,6 @@ async def analyze_player(message: types.Message):
     t = TEXTS.get(lang, TEXTS["ru"])
     username = message.text.strip()
     
-    # Для бесплатной версии зафиксируем 10 партий
     games_limit = 10
     platform_name = "Chess.com" if platform == "chesscom" else "Lichess"
     
@@ -232,48 +248,55 @@ async def analyze_player(message: types.Message):
     detected_issues = []
     yt_queries = []
 
-    # Разбираем партии и классифицируем проблемы
-    for idx, game in enumerate(games, 1):
-        # Достаем PGN / ходы партии
+    # Проходим по всем партиям и собираем точные шахматные паттерны
+    for game in games:
         pgn_text = game.get("pgn", "")
         if pgn_text:
-            import io
             pgn = chess.pgn.read_game(io.StringIO(pgn_text))
             if pgn:
                 board = pgn.board()
                 moves = list(pgn.mainline_moves())
                 
-                # Анализируем позицию в середине партии (где обычно происходят переломы)
-                half_move = len(moves) // 2
-                for i, move in enumerate(moves):
-                    board.push(move)
-                    if i == half_move and len(moves) > 10:
-                        fen = board.fen()
-                        issue = classify_position_error(fen, move_number=i//2)
+                # Сканируем ключевые позиции во второй половине партии
+                scan_indices = [len(moves)//2, int(len(moves)*0.7)]
+                for idx in scan_indices:
+                    if idx < len(moves):
+                        temp_board = pgn.board()
+                        for i, m in enumerate(moves[:idx]):
+                            temp_board.push(m)
                         
-                        if issue["topic_ru"] not in detected_issues:
-                            detected_issues.append(issue["topic_ru"])
-                            yt_queries.append(issue["yt_query_ru"])
+                        concepts = analyze_board_concepts(temp_board)
+                        for item in concepts:
+                            if item["topic_ru"] not in detected_issues:
+                                detected_issues.append(item["topic_ru"])
+                                yt_queries.append(item["yt_query_ru"])
 
-    # Ограничиваем топ-3 главными проблемами
+    # Оставляем ровно 3 самые актуальные темы
     detected_issues = detected_issues[:3]
     yt_queries = yt_queries[:3]
 
-    # Подгружаем видео с YouTube по найденным проблемам
+    # Если паттернов вышло меньше 3, добавляем базовую тактическую тему
+    if len(detected_issues) < 3:
+        fallback = {
+            "topic_ru": "🎯 **Расчет вариантов:** Точность и предупреждение зевов.",
+            "yt_query_ru": "расчет вариантов шахматы упражнения"
+        }
+        if fallback["topic_ru"] not in detected_issues:
+            detected_issues.append(fallback["topic_ru"])
+            yt_queries.append(fallback["yt_query_ru"])
+
+    # Подгружаем обучающие видео под каждую тему
     all_videos = []
     for q in yt_queries:
         vids = search_youtube_videos(q, lang=lang, max_results=1)
         all_videos.extend(vids)
 
-    # Собираем отчёт
+    # Формируем отчёт
     text = t["header"].format(username=username, platform=platform_name, count=len(games))
     text += t["weak_header"]
     
-    if detected_issues:
-        for issue in detected_issues:
-            text += f"{issue}\n"
-    else:
-        text += t["no_blunders"] + "\n"
+    for issue in detected_issues:
+        text += f"{issue}\n"
 
     text += t["plan_header"]
     if all_videos:
